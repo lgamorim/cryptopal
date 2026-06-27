@@ -1,4 +1,4 @@
-namespace CryptoPal.Application.CurrentPrice;
+namespace CryptoPal.Core.CurrentPrice;
 
 public class CurrentPriceView
 {

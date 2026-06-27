@@ -25,7 +25,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\..\src\CryptoPal.Application\CryptoPal.Application.csproj" />
+      <ProjectReference Include="..\..\src\CryptoPal.Core\CryptoPal.Core.csproj" />
       <ProjectReference Include="..\..\src\CryptoPal.ApiClient.CoinGecko\CryptoPal.ApiClient.CoinGecko.csproj" />
     </ItemGroup>
 

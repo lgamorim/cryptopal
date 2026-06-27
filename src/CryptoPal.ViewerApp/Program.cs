@@ -1,4 +1,4 @@
-using CryptoPal.Application;
+using CryptoPal.Core;
 using CryptoPal.ApiClient.CoinGecko;
 using CryptoPal.ViewerApp;
 using Microsoft.Extensions.Configuration;

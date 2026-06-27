@@ -1,4 +1,4 @@
-namespace CryptoPal.Application.HistoricalMarketData;
+namespace CryptoPal.Core.HistoricalMarketData;
 
 public class HistoricalMarketDataView
 {
