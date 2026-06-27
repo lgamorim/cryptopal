@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CryptoPal.ApiClient.CoinGecko/CryptoPal.ApiClient.CoinGecko.csproj" />
+    <Project Path="src/CryptoPal.Application/CryptoPal.Application.csproj" />
+    <Project Path="src/CryptoPal.ViewerApp/CryptoPal.ViewerApp.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CryptoPal.ApiClient.CoinGecko.UnitTests/CryptoPal.ApiClient.CoinGecko.UnitTests.csproj" />
+    <Project Path="tests/CryptoPal.Application.UnitTests/CryptoPal.Application.UnitTests.csproj" />
+    <Project Path="tests/CryptoPal.ViewerApp.UnitTests/CryptoPal.ViewerApp.UnitTests.csproj" />
+  </Folder>
+</Solution>
