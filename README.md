@@ -1,5 +1,7 @@
 # CryptoPal
 
+![CI](https://github.com/lgamorim/cryptopal/actions/workflows/ci.yml/badge.svg)
+
 A console application that sources cryptocurrency market data — such as live prices across multiple
 fiat currencies, live prices for tokens by contract address, historical price, market cap, and trading
 volume series, detailed metadata for a single coin, and developer (repository) activity for a coin on a
@@ -36,7 +38,16 @@ dotnet build CryptoPal.slnx
 
 # Run the full unit test suite.
 dotnet test CryptoPal.slnx
+
+# Verify formatting (also enforced in CI).
+dotnet format CryptoPal.slnx --verify-no-changes
 ```
+
+### Continuous integration
+
+GitHub Actions runs on every push to `master` and on pull requests targeting `master`. The workflow
+builds and tests the solution on `ubuntu-latest` and `windows-latest` (Release configuration), then
+verifies that `dotnet format --verify-no-changes` passes.
 
 ## Running the app
 
