@@ -5,10 +5,10 @@
     <Project Path="src/CryptoPal.ViewerApp/CryptoPal.ViewerApp.csproj" />
     <Project Path="src/CryptoPal.ViewerApi/CryptoPal.ViewerApi.csproj" />
   </Folder>
-  <Folder Name="/tests/">
-    <Project Path="tests/CryptoPal.ApiClient.CoinGecko.UnitTests/CryptoPal.ApiClient.CoinGecko.UnitTests.csproj" />
-    <Project Path="tests/CryptoPal.Core.UnitTests/CryptoPal.Core.UnitTests.csproj" />
-    <Project Path="tests/CryptoPal.ViewerApp.UnitTests/CryptoPal.ViewerApp.UnitTests.csproj" />
-    <Project Path="tests/CryptoPal.ViewerApi.UnitTests/CryptoPal.ViewerApi.UnitTests.csproj" />
+  <Folder Name="/test/">
+    <Project Path="test/CryptoPal.ApiClient.CoinGecko.UnitTests/CryptoPal.ApiClient.CoinGecko.UnitTests.csproj" />
+    <Project Path="test/CryptoPal.Core.UnitTests/CryptoPal.Core.UnitTests.csproj" />
+    <Project Path="test/CryptoPal.ViewerApp.UnitTests/CryptoPal.ViewerApp.UnitTests.csproj" />
+    <Project Path="test/CryptoPal.ViewerApi.UnitTests/CryptoPal.ViewerApi.UnitTests.csproj" />
   </Folder>
 </Solution>

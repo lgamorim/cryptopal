@@ -14,8 +14,10 @@ using Microsoft.Extensions.Logging;
 
 namespace CryptoPal.Core;
 
+/// <summary>Default implementation of <see cref="ICryptocurrencyService"/>.</summary>
 public class CryptocurrencyService(ICoinGeckoClient coinGeckoClient, ILogger<CryptocurrencyService> logger) : ICryptocurrencyService
 {
+    /// <inheritdoc />
     public async Task<CurrentPriceView> GetCurrentPriceAsync(GetCurrentPriceQuery query, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
@@ -45,6 +47,7 @@ public class CryptocurrencyService(ICoinGeckoClient coinGeckoClient, ILogger<Cry
         return new CurrentPriceView { CoinPrices = coinPrices };
     }
 
+    /// <inheritdoc />
     public async Task<TokenPriceView> GetTokenPriceAsync(GetTokenPriceQuery query, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
@@ -76,6 +79,7 @@ public class CryptocurrencyService(ICoinGeckoClient coinGeckoClient, ILogger<Cry
         return new TokenPriceView { ContractPrices = contractPrices };
     }
 
+    /// <inheritdoc />
     public async Task<HistoricalMarketDataView> GetHistoricalMarketDataAsync(GetHistoricalMarketDataQuery query, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
@@ -124,6 +128,7 @@ public class CryptocurrencyService(ICoinGeckoClient coinGeckoClient, ILogger<Cry
         };
     }
 
+    /// <inheritdoc />
     public async Task<CoinDataView> GetCoinDataAsync(GetCoinDataQuery query, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
@@ -151,6 +156,7 @@ public class CryptocurrencyService(ICoinGeckoClient coinGeckoClient, ILogger<Cry
         return coinDataView;
     }
 
+    /// <inheritdoc />
     public async Task<DeveloperDataView> GetDeveloperDataAsync(GetDeveloperDataQuery query, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
@@ -236,8 +242,7 @@ public class CryptocurrencyService(ICoinGeckoClient coinGeckoClient, ILogger<Cry
 
     private static IReadOnlyList<CoinMarketSnapshot> MapToMarketSnapshots(CoinDataResponse.CoinMarketData? marketData)
     {
-        var currentPrices = marketData?.CurrentPrice;
-        if (currentPrices is null)
+        if (marketData?.CurrentPrice is not { } currentPrices)
         {
             return Array.Empty<CoinMarketSnapshot>();
         }
@@ -245,7 +250,7 @@ public class CryptocurrencyService(ICoinGeckoClient coinGeckoClient, ILogger<Cry
         var snapshots = new List<CoinMarketSnapshot>(currentPrices.Count);
         foreach (var (currency, currentPrice) in currentPrices)
         {
-            var marketCap = marketData!.MarketCap is not null && marketData.MarketCap.TryGetValue(currency, out var cap) ? cap : 0;
+            var marketCap = marketData.MarketCap is not null && marketData.MarketCap.TryGetValue(currency, out var cap) ? cap : 0;
             var totalVolume = marketData.TotalVolume is not null && marketData.TotalVolume.TryGetValue(currency, out var volume) ? volume : 0;
             snapshots.Add(new CoinMarketSnapshot(currency, currentPrice, marketCap, totalVolume));
         }

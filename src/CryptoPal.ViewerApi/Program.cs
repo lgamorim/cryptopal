@@ -20,4 +20,5 @@ app.MapViewerApiEndpoints();
 
 app.Run();
 
+/// <summary>Marker type for WebApplication factory discovery in tests.</summary>
 public partial class Program;

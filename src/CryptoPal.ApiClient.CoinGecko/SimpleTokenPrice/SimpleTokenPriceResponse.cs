@@ -1,5 +1,3 @@
-using CryptoPal.ApiClient.CoinGecko;
-
 namespace CryptoPal.ApiClient.CoinGecko.SimpleTokenPrice;
 
 using PriceMatrix = IDictionary<string, IDictionary<string, decimal>>;

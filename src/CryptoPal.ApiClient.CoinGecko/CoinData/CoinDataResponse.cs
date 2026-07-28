@@ -1,5 +1,4 @@
 using System.Text.Json.Serialization;
-using CryptoPal.ApiClient.CoinGecko;
 
 namespace CryptoPal.ApiClient.CoinGecko.CoinData;
 

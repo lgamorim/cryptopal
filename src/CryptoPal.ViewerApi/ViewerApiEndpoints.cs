@@ -8,8 +8,10 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace CryptoPal.ViewerApi;
 
+/// <summary>Minimal REST endpoints over <see cref="ICryptocurrencyService"/>.</summary>
 public static class ViewerApiEndpoints
 {
+    /// <summary>Maps cryptocurrency viewer routes on the application.</summary>
     public static IEndpointRouteBuilder MapViewerApiEndpoints(this IEndpointRouteBuilder endpoints)
     {
         endpoints.MapGet("/prices", GetCurrentPriceAsync);
@@ -21,6 +23,7 @@ public static class ViewerApiEndpoints
         return endpoints;
     }
 
+    /// <summary>Returns current prices for the requested coins and currencies.</summary>
     public static async Task<Ok<CurrentPriceView>> GetCurrentPriceAsync(
         ICryptocurrencyService cryptocurrencyService,
         string[] coins,
@@ -33,6 +36,7 @@ public static class ViewerApiEndpoints
         return TypedResults.Ok(view);
     }
 
+    /// <summary>Returns current prices for token contract addresses on a platform.</summary>
     public static async Task<Ok<TokenPriceView>> GetTokenPriceAsync(
         ICryptocurrencyService cryptocurrencyService,
         string assetPlatformId,
@@ -51,6 +55,7 @@ public static class ViewerApiEndpoints
         return TypedResults.Ok(view);
     }
 
+    /// <summary>Returns historical price, market cap, and volume series.</summary>
     public static async Task<Ok<HistoricalMarketDataView>> GetHistoricalMarketDataAsync(
         ICryptocurrencyService cryptocurrencyService,
         string coin,
@@ -64,6 +69,7 @@ public static class ViewerApiEndpoints
         return TypedResults.Ok(view);
     }
 
+    /// <summary>Returns detailed metadata and market snapshots for a coin.</summary>
     public static async Task<Ok<CoinDataView>> GetCoinDataAsync(
         ICryptocurrencyService cryptocurrencyService,
         string coin,
@@ -75,6 +81,7 @@ public static class ViewerApiEndpoints
         return TypedResults.Ok(view);
     }
 
+    /// <summary>Returns developer repository activity for a coin on a historical date.</summary>
     public static async Task<Ok<DeveloperDataView>> GetDeveloperDataAsync(
         ICryptocurrencyService cryptocurrencyService,
         string coin,

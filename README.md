@@ -150,17 +150,24 @@ with a non-zero status code.
 
 The solution is split into a thin presentation host, a core layer that owns the domain workflow,
 and an isolated API client, plus a unit test project for each layer that contains logic.
+Source projects live under `src/`; unit tests under `test/`.
 
 | Project                                   | Description |
 |-------------------------------------------|-------------|
 | `CryptoPal.ViewerApp`                     | Console entry point and presentation host. Parses command-line arguments, configures dependency injection and logging, dispatches to the core service, and formats the results for the terminal. Holds no business logic. |
+| `CryptoPal.ViewerApi`                     | Minimal REST API over the same core service. Maps HTTP routes to query objects and returns view models as JSON. |
 | `CryptoPal.Core`                          | The core layer. Exposes `ICryptocurrencyService`, which accepts query objects (`GetCurrentPriceQuery`, `GetTokenPriceQuery`, `GetHistoricalMarketDataQuery`, `GetCoinDataQuery`, `GetDeveloperDataQuery`), orchestrates calls to the CoinGecko client, and maps the raw API responses into presentation-friendly view models (`CurrentPriceView`, `TokenPriceView`, `HistoricalMarketDataView`, `CoinDataView`, `DeveloperDataView`) using domain types such as `Price`, `ContractPrice`, `DatedValue`, and `CoinMarketSnapshot`. |
 | `CryptoPal.ApiClient.CoinGecko`          | A focused, reusable client for the CoinGecko REST API. Wraps an `HttpClient` (configured via `IHttpClientFactory`), builds the request URLs, deserializes JSON responses, and translates failures into result objects. It is the only project that knows about CoinGecko's wire format and endpoints. |
 | `CryptoPal.Core.UnitTests`                | Unit tests for the core layer, exercising `CryptocurrencyService`'s orchestration, response-to-view mapping, validation, and failure handling with a mocked CoinGecko client. |
 | `CryptoPal.ApiClient.CoinGecko.UnitTests` | Unit tests for the CoinGecko client, verifying URL construction, JSON deserialization, and error handling against a fake `HttpMessageHandler`. |
 | `CryptoPal.ViewerApp.UnitTests`           | Unit tests for the console host, verifying command parsing, output formatting, usage messages, and exit codes against a mocked `ICryptocurrencyService`. |
+| `CryptoPal.ViewerApi.UnitTests`           | Unit tests for the REST endpoints, verifying route handlers delegate to `ICryptocurrencyService` and return the expected view models. |
 
 ### Dependencies
 
-`CryptoPal.ViewerApp` → `CryptoPal.Core` → `CryptoPal.ApiClient.CoinGecko`. The dependency flow
-points inward toward the API client; lower layers never reference the layers above them.
+`CryptoPal.ViewerApp` → `CryptoPal.Core` → `CryptoPal.ApiClient.CoinGecko`
+
+`CryptoPal.ViewerApi` → `CryptoPal.Core` → `CryptoPal.ApiClient.CoinGecko`
+
+The dependency flow points inward toward the API client; lower layers never reference the layers above them.
+Presentation hosts register infrastructure types in their composition root only.

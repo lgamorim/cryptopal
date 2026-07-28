@@ -4,7 +4,6 @@ using CryptoPal.Core.CurrentPrice;
 using CryptoPal.Core.DeveloperData;
 using CryptoPal.Core.HistoricalMarketData;
 using CryptoPal.Core.TokenPrice;
-using CryptoPal.ViewerApi;
 using FluentAssertions;
 using NSubstitute;
 
