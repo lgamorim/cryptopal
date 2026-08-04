@@ -1,26 +1,18 @@
 namespace CryptoPal.Core.CoinData;
 
 /// <summary>Detailed coin metadata and per-currency market snapshots.</summary>
-public class CoinDataView
-{
-    /// <summary>CoinGecko coin identifier.</summary>
-    public required string Id { get; init; }
-
-    /// <summary>Ticker symbol.</summary>
-    public required string Symbol { get; init; }
-
-    /// <summary>Display name.</summary>
-    public required string Name { get; init; }
-
-    /// <summary>English description.</summary>
-    public required string Description { get; init; }
-
-    /// <summary>URL of the preferred coin image.</summary>
-    public required string ImageUrl { get; init; }
-
-    /// <summary>24-hour price change percentage.</summary>
-    public required decimal PriceChangePercentage24h { get; init; }
-
-    /// <summary>Current price, market cap, and volume per currency.</summary>
-    public required IReadOnlyList<CoinMarketSnapshot> MarketSnapshots { get; init; }
-}
+/// <param name="Id">CoinGecko coin identifier.</param>
+/// <param name="Symbol">Ticker symbol.</param>
+/// <param name="Name">Display name.</param>
+/// <param name="Description">English description.</param>
+/// <param name="ImageUrl">URL of the preferred coin image.</param>
+/// <param name="PriceChangePercentage24h">24-hour price change percentage.</param>
+/// <param name="MarketSnapshots">Current price, market cap, and volume per currency.</param>
+public record CoinDataView(
+    string Id,
+    string Symbol,
+    string Name,
+    string Description,
+    string ImageUrl,
+    decimal PriceChangePercentage24h,
+    IReadOnlyList<CoinMarketSnapshot> MarketSnapshots);

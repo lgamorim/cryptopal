@@ -1,11 +1,6 @@
 namespace CryptoPal.Core.TokenPrice;
 
 /// <summary>Current prices for a single token contract address.</summary>
-public class ContractPrice
-{
-    /// <summary>Token contract address.</summary>
-    public required string Address { get; init; }
-
-    /// <summary>Latest prices per currency code.</summary>
-    public required IEnumerable<Price> Prices { get; init; }
-}
+/// <param name="Address">Token contract address.</param>
+/// <param name="Prices">Latest prices per currency code.</param>
+public record ContractPrice(string Address, IEnumerable<Price> Prices);

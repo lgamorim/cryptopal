@@ -14,17 +14,10 @@ public class ViewerAppRunnerTests
     [Fact]
     public async Task Should_PrintFormattedPricesAndReturnZero_When_PriceCommandIsValid()
     {
-        var currentPriceView = new CurrentPriceView
-        {
-            CoinPrices =
-            [
-                new CoinPrice
-                {
-                    Id = "bitcoin",
-                    Prices = [new Price("eur", 28135m), new Price("usd", 30628m)]
-                }
-            ]
-        };
+        var currentPriceView = new CurrentPriceView(
+        [
+            new CoinPrice("bitcoin", [new Price("eur", 28135m), new Price("usd", 30628m)])
+        ]);
         var cryptocurrencyService = Substitute.For<ICryptocurrencyService>();
         cryptocurrencyService.GetCurrentPriceAsync(Arg.Any<GetCurrentPriceQuery>(), Arg.Any<CancellationToken>())
             .Returns(ServiceResult<CurrentPriceView>.Success(currentPriceView));
@@ -51,7 +44,7 @@ public class ViewerAppRunnerTests
     {
         var cryptocurrencyService = Substitute.For<ICryptocurrencyService>();
         cryptocurrencyService.GetCurrentPriceAsync(Arg.Any<GetCurrentPriceQuery>(), Arg.Any<CancellationToken>())
-            .Returns(ServiceResult<CurrentPriceView>.Success(new CurrentPriceView { CoinPrices = [] }));
+            .Returns(ServiceResult<CurrentPriceView>.Success(new CurrentPriceView([])));
 
         var output = new StringWriter();
         var runner = new ViewerAppRunner(cryptocurrencyService, output, new StringWriter());
@@ -68,17 +61,10 @@ public class ViewerAppRunnerTests
     [Fact]
     public async Task Should_PrintFormattedTokenPricesAndReturnZero_When_TokenCommandIsValid()
     {
-        var tokenPriceView = new TokenPriceView
-        {
-            ContractPrices =
-            [
-                new ContractPrice
-                {
-                    Address = "0xdac17f958d2ee523a2206206994597c13d831ec7",
-                    Prices = [new Price("eur", 0.92m), new Price("usd", 1.0m)]
-                }
-            ]
-        };
+        var tokenPriceView = new TokenPriceView(
+        [
+            new ContractPrice("0xdac17f958d2ee523a2206206994597c13d831ec7", [new Price("eur", 0.92m), new Price("usd", 1.0m)])
+        ]);
         var cryptocurrencyService = Substitute.For<ICryptocurrencyService>();
         cryptocurrencyService.GetTokenPriceAsync(Arg.Any<GetTokenPriceQuery>(), Arg.Any<CancellationToken>())
             .Returns(ServiceResult<TokenPriceView>.Success(tokenPriceView));
@@ -106,7 +92,7 @@ public class ViewerAppRunnerTests
     {
         var cryptocurrencyService = Substitute.For<ICryptocurrencyService>();
         cryptocurrencyService.GetTokenPriceAsync(Arg.Any<GetTokenPriceQuery>(), Arg.Any<CancellationToken>())
-            .Returns(ServiceResult<TokenPriceView>.Success(new TokenPriceView { ContractPrices = [] }));
+            .Returns(ServiceResult<TokenPriceView>.Success(new TokenPriceView([])));
 
         var output = new StringWriter();
         var runner = new ViewerAppRunner(cryptocurrencyService, output, new StringWriter());
@@ -124,14 +110,12 @@ public class ViewerAppRunnerTests
     [Fact]
     public async Task Should_PrintHistoricalDataAndReturnZero_When_HistoryCommandIsValid()
     {
-        var historicalMarketDataView = new HistoricalMarketDataView
-        {
-            Coin = "bitcoin",
-            Currency = "eur",
-            Prices = [new DatedValue("2023-07-04", 28477.64m), new DatedValue("2023-07-05", 28058.67m)],
-            MarketCaps = [],
-            TotalVolumes = []
-        };
+        var historicalMarketDataView = new HistoricalMarketDataView(
+            "bitcoin",
+            "eur",
+            [new DatedValue("2023-07-04", 28477.64m), new DatedValue("2023-07-05", 28058.67m)],
+            [],
+            []);
         var cryptocurrencyService = Substitute.For<ICryptocurrencyService>();
         cryptocurrencyService.GetHistoricalMarketDataAsync(Arg.Any<GetHistoricalMarketDataQuery>(), Arg.Any<CancellationToken>())
             .Returns(ServiceResult<HistoricalMarketDataView>.Success(historicalMarketDataView));
@@ -155,20 +139,17 @@ public class ViewerAppRunnerTests
     [Fact]
     public async Task Should_PrintCoinDataAndReturnZero_When_CoinCommandIsValid()
     {
-        var coinDataView = new CoinDataView
-        {
-            Id = "bitcoin",
-            Symbol = "btc",
-            Name = "Bitcoin",
-            Description = "Bitcoin is a cryptocurrency.",
-            ImageUrl = "large.png",
-            PriceChangePercentage24h = 1.23m,
-            MarketSnapshots =
+        var coinDataView = new CoinDataView(
+            "bitcoin",
+            "btc",
+            "Bitcoin",
+            "Bitcoin is a cryptocurrency.",
+            "large.png",
+            1.23m,
             [
                 new CoinMarketSnapshot("eur", 28135m, 552996577247m, 13732072142m),
                 new CoinMarketSnapshot("usd", 30628m, 601000000000m, 15000000000m)
-            ]
-        };
+            ]);
         var cryptocurrencyService = Substitute.For<ICryptocurrencyService>();
         cryptocurrencyService.GetCoinDataAsync(Arg.Any<GetCoinDataQuery>(), Arg.Any<CancellationToken>())
             .Returns(ServiceResult<CoinDataView>.Success(coinDataView));
@@ -192,22 +173,20 @@ public class ViewerAppRunnerTests
     [Fact]
     public async Task Should_PrintDeveloperDataAndReturnZero_When_DeveloperCommandIsValid()
     {
-        var developerDataView = new DeveloperDataView
-        {
-            Id = "bitcoin",
-            Symbol = "btc",
-            Name = "Bitcoin",
-            Forks = 36262,
-            Stars = 66818,
-            Subscribers = 3683,
-            TotalIssues = 7338,
-            ClosedIssues = 7299,
-            PullRequestsMerged = 11215,
-            PullRequestContributors = 846,
-            CodeAdditions = 1101,
-            CodeDeletions = -1480,
-            CommitCount4Weeks = 147
-        };
+        var developerDataView = new DeveloperDataView(
+            "bitcoin",
+            "btc",
+            "Bitcoin",
+            36262,
+            66818,
+            3683,
+            7338,
+            7299,
+            11215,
+            846,
+            1101,
+            -1480,
+            147);
         var cryptocurrencyService = Substitute.For<ICryptocurrencyService>();
         cryptocurrencyService.GetDeveloperDataAsync(Arg.Any<GetDeveloperDataQuery>(), Arg.Any<CancellationToken>())
             .Returns(ServiceResult<DeveloperDataView>.Success(developerDataView));

@@ -39,7 +39,7 @@ public class CryptocurrencyService(ICoinGeckoClient coinGeckoClient, ILogger<Cry
             }
 
             var coinPrices = MapToCoinPrices(simplePriceResponse.CryptocurrencyPrices);
-            return ServiceResult<CurrentPriceView>.Success(new CurrentPriceView { CoinPrices = coinPrices });
+            return ServiceResult<CurrentPriceView>.Success(new CurrentPriceView(coinPrices));
         }
         catch (Exception exception) when (exception is IndexOutOfRangeException or ArgumentOutOfRangeException or InvalidCastException or OverflowException)
         {
@@ -71,7 +71,7 @@ public class CryptocurrencyService(ICoinGeckoClient coinGeckoClient, ILogger<Cry
             }
 
             var contractPrices = MapToContractPrices(simpleTokenPriceResponse.TokenPrices);
-            return ServiceResult<TokenPriceView>.Success(new TokenPriceView { ContractPrices = contractPrices });
+            return ServiceResult<TokenPriceView>.Success(new TokenPriceView(contractPrices));
         }
         catch (Exception exception) when (exception is IndexOutOfRangeException or ArgumentOutOfRangeException or InvalidCastException or OverflowException)
         {
@@ -108,14 +108,12 @@ public class CryptocurrencyService(ICoinGeckoClient coinGeckoClient, ILogger<Cry
             var mappedMarketCaps = MapToDatedValues(historicalMarketData.MarketCaps);
             var mappedTotalVolumes = MapToDatedValues(historicalMarketData.TotalVolumes);
 
-            return ServiceResult<HistoricalMarketDataView>.Success(new HistoricalMarketDataView
-            {
-                Coin = query.Coin,
-                Currency = query.Currency,
-                Prices = mappedPrices,
-                MarketCaps = mappedMarketCaps,
-                TotalVolumes = mappedTotalVolumes
-            });
+            return ServiceResult<HistoricalMarketDataView>.Success(new HistoricalMarketDataView(
+                query.Coin,
+                query.Currency,
+                mappedPrices,
+                mappedMarketCaps,
+                mappedTotalVolumes));
         }
         catch (Exception exception) when (exception is ArgumentOutOfRangeException)
         {
@@ -206,7 +204,7 @@ public class CryptocurrencyService(ICoinGeckoClient coinGeckoClient, ILogger<Cry
         foreach (var (id, currencyPrices) in cryptoPrices)
         {
             var prices = currencyPrices.Select(pair => new Price(pair.Key, pair.Value)).ToList();
-            coinPrices.Add(new CoinPrice { Id = id, Prices = prices });
+            coinPrices.Add(new CoinPrice(id, prices));
         }
 
         return coinPrices;
@@ -218,13 +216,13 @@ public class CryptocurrencyService(ICoinGeckoClient coinGeckoClient, ILogger<Cry
         foreach (var (address, currencyPrices) in tokenPrices)
         {
             var prices = currencyPrices.Select(pair => new Price(pair.Key, pair.Value)).ToList();
-            contractPrices.Add(new ContractPrice { Address = address, Prices = prices });
+            contractPrices.Add(new ContractPrice(address, prices));
         }
 
         return contractPrices;
     }
 
-    private static IList<DatedValue> MapToDatedValues(IEnumerable<MarketDataPoint> points) =>
+    private static IReadOnlyList<DatedValue> MapToDatedValues(IEnumerable<MarketDataPoint> points) =>
         points
             .Select(point => new DatedValue(
                 DateTimeOffset.FromUnixTimeMilliseconds(point.TimestampMs).ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
@@ -242,16 +240,14 @@ public class CryptocurrencyService(ICoinGeckoClient coinGeckoClient, ILogger<Cry
             ?? coinDetail.Image?.Thumb
             ?? string.Empty;
 
-        return new CoinDataView
-        {
-            Id = coinDetail.Id ?? queryCoin,
-            Symbol = coinDetail.Symbol ?? string.Empty,
-            Name = coinDetail.Name ?? string.Empty,
-            Description = description,
-            ImageUrl = imageUrl,
-            PriceChangePercentage24h = coinDetail.MarketData?.PriceChangePercentage24h ?? 0,
-            MarketSnapshots = MapToMarketSnapshots(coinDetail.MarketData)
-        };
+        return new CoinDataView(
+            coinDetail.Id ?? queryCoin,
+            coinDetail.Symbol ?? string.Empty,
+            coinDetail.Name ?? string.Empty,
+            description,
+            imageUrl,
+            coinDetail.MarketData?.PriceChangePercentage24h ?? 0,
+            MapToMarketSnapshots(coinDetail.MarketData));
     }
 
     private static IReadOnlyList<CoinMarketSnapshot> MapToMarketSnapshots(CoinDataResponse.CoinMarketData? marketData)
@@ -277,21 +273,19 @@ public class CryptocurrencyService(ICoinGeckoClient coinGeckoClient, ILogger<Cry
         var developerData = coinHistory.DeveloperData;
         var codeChanges = developerData?.CodeAdditionsDeletions4Weeks;
 
-        return new DeveloperDataView
-        {
-            Id = coinHistory.Id ?? queryCoin,
-            Symbol = coinHistory.Symbol ?? string.Empty,
-            Name = coinHistory.Name ?? string.Empty,
-            Forks = developerData?.Forks ?? 0,
-            Stars = developerData?.Stars ?? 0,
-            Subscribers = developerData?.Subscribers ?? 0,
-            TotalIssues = developerData?.TotalIssues ?? 0,
-            ClosedIssues = developerData?.ClosedIssues ?? 0,
-            PullRequestsMerged = developerData?.PullRequestsMerged ?? 0,
-            PullRequestContributors = developerData?.PullRequestContributors ?? 0,
-            CodeAdditions = codeChanges?.Additions ?? 0,
-            CodeDeletions = codeChanges?.Deletions ?? 0,
-            CommitCount4Weeks = developerData?.CommitCount4Weeks ?? 0
-        };
+        return new DeveloperDataView(
+            coinHistory.Id ?? queryCoin,
+            coinHistory.Symbol ?? string.Empty,
+            coinHistory.Name ?? string.Empty,
+            developerData?.Forks ?? 0,
+            developerData?.Stars ?? 0,
+            developerData?.Subscribers ?? 0,
+            developerData?.TotalIssues ?? 0,
+            developerData?.ClosedIssues ?? 0,
+            developerData?.PullRequestsMerged ?? 0,
+            developerData?.PullRequestContributors ?? 0,
+            codeChanges?.Additions ?? 0,
+            codeChanges?.Deletions ?? 0,
+            developerData?.CommitCount4Weeks ?? 0);
     }
 }
