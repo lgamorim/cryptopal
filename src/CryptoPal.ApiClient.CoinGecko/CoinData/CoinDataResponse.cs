@@ -5,6 +5,7 @@ namespace CryptoPal.ApiClient.CoinGecko.CoinData;
 public class CoinDataResponse : IApiResponse
 {
     public bool HasRequestSucceeded { get; init; }
+    public int? HttpStatusCode { get; init; }
     public required CoinDetail Coin { get; init; }
 
     public class CoinDetail

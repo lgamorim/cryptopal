@@ -27,7 +27,7 @@ public class ViewerAppRunnerTests
         };
         var cryptocurrencyService = Substitute.For<ICryptocurrencyService>();
         cryptocurrencyService.GetCurrentPriceAsync(Arg.Any<GetCurrentPriceQuery>(), Arg.Any<CancellationToken>())
-            .Returns(currentPriceView);
+            .Returns(ServiceResult<CurrentPriceView>.Success(currentPriceView));
 
         var output = new StringWriter();
         var runner = new ViewerAppRunner(cryptocurrencyService, output, new StringWriter());
@@ -51,7 +51,7 @@ public class ViewerAppRunnerTests
     {
         var cryptocurrencyService = Substitute.For<ICryptocurrencyService>();
         cryptocurrencyService.GetCurrentPriceAsync(Arg.Any<GetCurrentPriceQuery>(), Arg.Any<CancellationToken>())
-            .Returns(new CurrentPriceView { CoinPrices = [] });
+            .Returns(ServiceResult<CurrentPriceView>.Success(new CurrentPriceView { CoinPrices = [] }));
 
         var output = new StringWriter();
         var runner = new ViewerAppRunner(cryptocurrencyService, output, new StringWriter());
@@ -81,7 +81,7 @@ public class ViewerAppRunnerTests
         };
         var cryptocurrencyService = Substitute.For<ICryptocurrencyService>();
         cryptocurrencyService.GetTokenPriceAsync(Arg.Any<GetTokenPriceQuery>(), Arg.Any<CancellationToken>())
-            .Returns(tokenPriceView);
+            .Returns(ServiceResult<TokenPriceView>.Success(tokenPriceView));
 
         var output = new StringWriter();
         var runner = new ViewerAppRunner(cryptocurrencyService, output, new StringWriter());
@@ -106,7 +106,7 @@ public class ViewerAppRunnerTests
     {
         var cryptocurrencyService = Substitute.For<ICryptocurrencyService>();
         cryptocurrencyService.GetTokenPriceAsync(Arg.Any<GetTokenPriceQuery>(), Arg.Any<CancellationToken>())
-            .Returns(new TokenPriceView { ContractPrices = [] });
+            .Returns(ServiceResult<TokenPriceView>.Success(new TokenPriceView { ContractPrices = [] }));
 
         var output = new StringWriter();
         var runner = new ViewerAppRunner(cryptocurrencyService, output, new StringWriter());
@@ -134,7 +134,7 @@ public class ViewerAppRunnerTests
         };
         var cryptocurrencyService = Substitute.For<ICryptocurrencyService>();
         cryptocurrencyService.GetHistoricalMarketDataAsync(Arg.Any<GetHistoricalMarketDataQuery>(), Arg.Any<CancellationToken>())
-            .Returns(historicalMarketDataView);
+            .Returns(ServiceResult<HistoricalMarketDataView>.Success(historicalMarketDataView));
 
         var output = new StringWriter();
         var runner = new ViewerAppRunner(cryptocurrencyService, output, new StringWriter());
@@ -171,7 +171,7 @@ public class ViewerAppRunnerTests
         };
         var cryptocurrencyService = Substitute.For<ICryptocurrencyService>();
         cryptocurrencyService.GetCoinDataAsync(Arg.Any<GetCoinDataQuery>(), Arg.Any<CancellationToken>())
-            .Returns(coinDataView);
+            .Returns(ServiceResult<CoinDataView>.Success(coinDataView));
 
         var output = new StringWriter();
         var runner = new ViewerAppRunner(cryptocurrencyService, output, new StringWriter());
@@ -210,7 +210,7 @@ public class ViewerAppRunnerTests
         };
         var cryptocurrencyService = Substitute.For<ICryptocurrencyService>();
         cryptocurrencyService.GetDeveloperDataAsync(Arg.Any<GetDeveloperDataQuery>(), Arg.Any<CancellationToken>())
-            .Returns(developerDataView);
+            .Returns(ServiceResult<DeveloperDataView>.Success(developerDataView));
 
         var output = new StringWriter();
         var runner = new ViewerAppRunner(cryptocurrencyService, output, new StringWriter());
@@ -286,7 +286,7 @@ public class ViewerAppRunnerTests
     {
         var cryptocurrencyService = Substitute.For<ICryptocurrencyService>();
         cryptocurrencyService.GetCurrentPriceAsync(Arg.Any<GetCurrentPriceQuery>(), Arg.Any<CancellationToken>())
-            .Returns(Task.FromException<CurrentPriceView>(new InvalidOperationException("Service failed")));
+            .Returns(Task.FromException<ServiceResult<CurrentPriceView>>(new InvalidOperationException("Service failed")));
 
         var error = new StringWriter();
         var runner = new ViewerAppRunner(cryptocurrencyService, new StringWriter(), error);
@@ -295,5 +295,41 @@ public class ViewerAppRunnerTests
 
         exitCode.Should().Be(1);
         error.ToString().Trim().Should().Be("Service failed");
+    }
+
+    [Fact]
+    public async Task Should_WriteErrorAndReturnOne_When_PriceServiceReturnsFailure()
+    {
+        var cryptocurrencyService = Substitute.For<ICryptocurrencyService>();
+        cryptocurrencyService.GetCurrentPriceAsync(Arg.Any<GetCurrentPriceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(ServiceResult<CurrentPriceView>.Failure(ServiceErrorCode.UpstreamUnavailable, "Failed to retrieve prices from CoinGecko."));
+
+        var output = new StringWriter();
+        var error = new StringWriter();
+        var runner = new ViewerAppRunner(cryptocurrencyService, output, error);
+
+        var exitCode = await runner.RunAsync(["price", "bitcoin", "eur"], TestContext.Current.CancellationToken);
+
+        exitCode.Should().Be(1);
+        error.ToString().Trim().Should().Be("Failed to retrieve prices from CoinGecko.");
+        output.ToString().Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Should_WriteErrorAndReturnOne_When_CoinServiceReturnsFailure()
+    {
+        var cryptocurrencyService = Substitute.For<ICryptocurrencyService>();
+        cryptocurrencyService.GetCoinDataAsync(Arg.Any<GetCoinDataQuery>(), Arg.Any<CancellationToken>())
+            .Returns(ServiceResult<CoinDataView>.Failure(ServiceErrorCode.NotFound, "Failed to retrieve coin data from CoinGecko."));
+
+        var output = new StringWriter();
+        var error = new StringWriter();
+        var runner = new ViewerAppRunner(cryptocurrencyService, output, error);
+
+        var exitCode = await runner.RunAsync(["coin", "not-a-real-coin"], TestContext.Current.CancellationToken);
+
+        exitCode.Should().Be(1);
+        error.ToString().Trim().Should().Be("Failed to retrieve coin data from CoinGecko.");
+        output.ToString().Should().BeEmpty();
     }
 }

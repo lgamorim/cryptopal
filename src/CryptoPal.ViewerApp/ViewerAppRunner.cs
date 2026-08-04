@@ -16,7 +16,7 @@ public sealed class ViewerAppRunner(
     /// <summary>Runs a single command from <paramref name="args"/> and returns the process exit code.</summary>
     /// <param name="args">Command-line arguments.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns><c>0</c> on success; <c>1</c> on usage or runtime error.</returns>
+    /// <returns><c>0</c> on success; <c>1</c> on usage, service failure, or runtime error.</returns>
     public async Task<int> RunAsync(string[] args, CancellationToken cancellationToken = default)
     {
         try
@@ -41,13 +41,14 @@ public sealed class ViewerAppRunner(
                         Coins = Split(coinArg),
                         Currencies = Split(currencyArg)
                     };
-                    var currentPrice = await cryptocurrencyService.GetCurrentPriceAsync(query, cancellationToken);
-                    foreach (var coinPrice in currentPrice.CoinPrices)
+                    var result = await cryptocurrencyService.GetCurrentPriceAsync(query, cancellationToken);
+                    return await HandleResult(result, async currentPrice =>
                     {
-                        await output.WriteLineAsync(Format(coinPrice));
-                    }
-
-                    return 0;
+                        foreach (var coinPrice in currentPrice.CoinPrices)
+                        {
+                            await output.WriteLineAsync(Format(coinPrice));
+                        }
+                    });
                 }
             case ["token", var assetPlatformArg, var addressArg, var currencyArg]:
                 {
@@ -57,60 +58,76 @@ public sealed class ViewerAppRunner(
                         ContractAddresses = Split(addressArg),
                         Currencies = Split(currencyArg)
                     };
-                    var tokenPrice = await cryptocurrencyService.GetTokenPriceAsync(query, cancellationToken);
-                    foreach (var contractPrice in tokenPrice.ContractPrices)
+                    var result = await cryptocurrencyService.GetTokenPriceAsync(query, cancellationToken);
+                    return await HandleResult(result, async tokenPrice =>
                     {
-                        await output.WriteLineAsync(Format(contractPrice));
-                    }
-
-                    return 0;
+                        foreach (var contractPrice in tokenPrice.ContractPrices)
+                        {
+                            await output.WriteLineAsync(Format(contractPrice));
+                        }
+                    });
                 }
             case ["history", var coin, var currency, var daysArg] when int.TryParse(daysArg, out var days):
                 {
                     var query = new GetHistoricalMarketDataQuery { Coin = coin, Currency = currency, Days = days };
-                    var historicalMarketData = await cryptocurrencyService.GetHistoricalMarketDataAsync(query, cancellationToken);
-                    await output.WriteLineAsync($"{historicalMarketData.Coin}/{historicalMarketData.Currency}");
-                    foreach (var (date, value) in historicalMarketData.Prices)
+                    var result = await cryptocurrencyService.GetHistoricalMarketDataAsync(query, cancellationToken);
+                    return await HandleResult(result, async historicalMarketData =>
                     {
-                        await output.WriteLineAsync($"{date}={value}");
-                    }
-
-                    return 0;
+                        await output.WriteLineAsync($"{historicalMarketData.Coin}/{historicalMarketData.Currency}");
+                        foreach (var (date, value) in historicalMarketData.Prices)
+                        {
+                            await output.WriteLineAsync($"{date}={value}");
+                        }
+                    });
                 }
             case ["coin", var coin]:
                 {
                     var query = new GetCoinDataQuery { Coin = coin };
-                    var coinData = await cryptocurrencyService.GetCoinDataAsync(query, cancellationToken);
-                    await output.WriteLineAsync($"{coinData.Id} ({coinData.Symbol}) {coinData.Name}");
-                    await output.WriteLineAsync($"24h: {coinData.PriceChangePercentage24h}%");
-                    foreach (var snapshot in coinData.MarketSnapshots)
+                    var result = await cryptocurrencyService.GetCoinDataAsync(query, cancellationToken);
+                    return await HandleResult(result, async coinData =>
                     {
-                        await output.WriteLineAsync($"{snapshot.Currency}={snapshot.CurrentPrice}");
-                    }
-
-                    return 0;
+                        await output.WriteLineAsync($"{coinData.Id} ({coinData.Symbol}) {coinData.Name}");
+                        await output.WriteLineAsync($"24h: {coinData.PriceChangePercentage24h}%");
+                        foreach (var snapshot in coinData.MarketSnapshots)
+                        {
+                            await output.WriteLineAsync($"{snapshot.Currency}={snapshot.CurrentPrice}");
+                        }
+                    });
                 }
             case ["developer", var coin, var date]:
                 {
                     var query = new GetDeveloperDataQuery { Coin = coin, Date = date };
-                    var developerData = await cryptocurrencyService.GetDeveloperDataAsync(query, cancellationToken);
-                    await output.WriteLineAsync($"{developerData.Id} ({developerData.Symbol}) {developerData.Name}");
-                    await output.WriteLineAsync($"Forks: {developerData.Forks}");
-                    await output.WriteLineAsync($"Stars: {developerData.Stars}");
-                    await output.WriteLineAsync($"Subscribers: {developerData.Subscribers}");
-                    await output.WriteLineAsync($"Total issues: {developerData.TotalIssues}");
-                    await output.WriteLineAsync($"Closed issues: {developerData.ClosedIssues}");
-                    await output.WriteLineAsync($"Pull requests merged: {developerData.PullRequestsMerged}");
-                    await output.WriteLineAsync($"Pull request contributors: {developerData.PullRequestContributors}");
-                    await output.WriteLineAsync($"Code changes (4w): +{developerData.CodeAdditions}/{developerData.CodeDeletions}");
-                    await output.WriteLineAsync($"Commits (4w): {developerData.CommitCount4Weeks}");
-
-                    return 0;
+                    var result = await cryptocurrencyService.GetDeveloperDataAsync(query, cancellationToken);
+                    return await HandleResult(result, async developerData =>
+                    {
+                        await output.WriteLineAsync($"{developerData.Id} ({developerData.Symbol}) {developerData.Name}");
+                        await output.WriteLineAsync($"Forks: {developerData.Forks}");
+                        await output.WriteLineAsync($"Stars: {developerData.Stars}");
+                        await output.WriteLineAsync($"Subscribers: {developerData.Subscribers}");
+                        await output.WriteLineAsync($"Total issues: {developerData.TotalIssues}");
+                        await output.WriteLineAsync($"Closed issues: {developerData.ClosedIssues}");
+                        await output.WriteLineAsync($"Pull requests merged: {developerData.PullRequestsMerged}");
+                        await output.WriteLineAsync($"Pull request contributors: {developerData.PullRequestContributors}");
+                        await output.WriteLineAsync($"Code changes (4w): +{developerData.CodeAdditions}/{developerData.CodeDeletions}");
+                        await output.WriteLineAsync($"Commits (4w): {developerData.CommitCount4Weeks}");
+                    });
                 }
             default:
                 PrintUsage();
                 return 1;
         }
+    }
+
+    private async Task<int> HandleResult<T>(ServiceResult<T> result, Func<T, Task> writeSuccess)
+    {
+        if (!result.IsSuccess)
+        {
+            await error.WriteLineAsync(result.ErrorMessage);
+            return 1;
+        }
+
+        await writeSuccess(result.Value!);
+        return 0;
     }
 
     private static string[] Split(string value) =>

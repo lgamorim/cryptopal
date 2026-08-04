@@ -396,7 +396,80 @@ public class CoinGeckoClientTests
 
         simplePriceResponse.Should().NotBeNull();
         simplePriceResponse.HasRequestSucceeded.Should().BeFalse();
+        simplePriceResponse.HttpStatusCode.Should().Be((int)HttpStatusCode.InternalServerError);
         simplePriceResponse.CryptocurrencyPrices.Should().NotBeNull().And.BeEmpty();
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.NotFound)]
+    [InlineData(HttpStatusCode.TooManyRequests)]
+    public async Task Should_SetHttpStatusCode_When_HttpRequestFails(HttpStatusCode statusCode)
+    {
+        var simplePriceRequest = new SimplePriceRequest()
+        {
+            Coins = new[] { "bitcoin" },
+            Currencies = new[] { "eur" }
+        };
+
+        var httpClient = CreateHttpClient((_, _) =>
+            Task.FromResult(new HttpResponseMessage(statusCode)));
+
+        var coinGeckoClient = new CoinGeckoClient(httpClient, NullLogger<CoinGeckoClient>.Instance);
+        var simplePriceResponse = await coinGeckoClient.GetSimplePriceAsync(simplePriceRequest, TestContext.Current.CancellationToken);
+
+        simplePriceResponse.HasRequestSucceeded.Should().BeFalse();
+        simplePriceResponse.HttpStatusCode.Should().Be((int)statusCode);
+    }
+
+    [Fact]
+    public async Task Should_GetSimplePriceReturnUnsuccessfulResponseWithoutStatusCode_When_RequestTimesOut()
+    {
+        var simplePriceRequest = new SimplePriceRequest()
+        {
+            Coins = new[] { "bitcoin" },
+            Currencies = new[] { "eur" }
+        };
+
+        var httpClient = CreateHttpClient((_, cancellationToken) =>
+        {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                throw new OperationCanceledException(cancellationToken);
+            }
+
+            throw new TaskCanceledException("The request was canceled due to the configured HttpClient.Timeout of 100 seconds elapsing.");
+        });
+
+        var coinGeckoClient = new CoinGeckoClient(httpClient, NullLogger<CoinGeckoClient>.Instance);
+        var simplePriceResponse = await coinGeckoClient.GetSimplePriceAsync(simplePriceRequest, TestContext.Current.CancellationToken);
+
+        simplePriceResponse.HasRequestSucceeded.Should().BeFalse();
+        simplePriceResponse.HttpStatusCode.Should().BeNull();
+        simplePriceResponse.CryptocurrencyPrices.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Should_GetSimplePriceThrowOperationCanceledException_When_CancellationIsRequested()
+    {
+        var simplePriceRequest = new SimplePriceRequest()
+        {
+            Coins = new[] { "bitcoin" },
+            Currencies = new[] { "eur" }
+        };
+
+        using var cancellationTokenSource = new CancellationTokenSource();
+        await cancellationTokenSource.CancelAsync();
+
+        var httpClient = CreateHttpClient((_, cancellationToken) =>
+        {
+            throw new OperationCanceledException(cancellationToken);
+        });
+
+        var coinGeckoClient = new CoinGeckoClient(httpClient, NullLogger<CoinGeckoClient>.Instance);
+
+        Func<Task> action = async () => await coinGeckoClient.GetSimplePriceAsync(simplePriceRequest, cancellationTokenSource.Token);
+
+        await action.Should().ThrowAsync<OperationCanceledException>();
     }
 
     [Fact]

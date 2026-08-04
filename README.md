@@ -157,6 +157,36 @@ Coin and currency values are trimmed, and any empty entries are ignored. Invokin
 arguments, an unknown command, or the wrong number/type of arguments prints a usage message and exits
 with a non-zero status code.
 
+When CoinGecko is unavailable or returns an error, the command writes a message to stderr and exits with
+code `1` instead of printing empty output.
+
+## ViewerApi
+
+`CryptoPal.ViewerApi` exposes the same data over HTTP. Configure the API key with user secrets on that
+project, then run:
+
+```sh
+dotnet user-secrets set "CoinGecko:ApiKey" "<your-key>" --project src/CryptoPal.ViewerApi
+dotnet run --project src/CryptoPal.ViewerApi
+```
+
+Routes mirror the console commands: `/prices`, `/token-prices`, `/historical-market-data`,
+`/coins/{coin}`, and `/coins/{coin}/developer-data`.
+
+### Error responses
+
+On upstream failure the API returns [RFC 7807 ProblemDetails](https://www.rfc-editor.org/rfc/rfc7807)
+instead of `200 OK` with empty data:
+
+| Situation | HTTP status | `title` (error code) |
+|-----------|-------------|----------------------|
+| Resource not found upstream | `404` | `NotFound` |
+| CoinGecko rate limit | `429` | `RateLimited` |
+| Other upstream/transport failure | `502` | `UpstreamUnavailable` |
+| Response could not be mapped | `500` | `ResponseMappingFailed` |
+
+The `detail` field contains a short human-readable message.
+
 ## Projects
 
 The solution is split into a thin presentation host, a core layer that owns the domain workflow,
@@ -167,12 +197,12 @@ Source projects live under `src/`; unit tests under `test/`.
 |-------------------------------------------|-------------|
 | `CryptoPal.ViewerApp`                     | Console entry point and presentation host. Parses command-line arguments, configures dependency injection and logging, dispatches to the core service, and formats the results for the terminal. Holds no business logic. |
 | `CryptoPal.ViewerApi`                     | Minimal REST API over the same core service. Maps HTTP routes to query objects and returns view models as JSON. |
-| `CryptoPal.Core`                          | The core layer. Exposes `ICryptocurrencyService`, which accepts query objects (`GetCurrentPriceQuery`, `GetTokenPriceQuery`, `GetHistoricalMarketDataQuery`, `GetCoinDataQuery`, `GetDeveloperDataQuery`), orchestrates calls to the CoinGecko client, and maps the raw API responses into presentation-friendly view models (`CurrentPriceView`, `TokenPriceView`, `HistoricalMarketDataView`, `CoinDataView`, `DeveloperDataView`) using domain types such as `Price`, `ContractPrice`, `DatedValue`, and `CoinMarketSnapshot`. |
+| `CryptoPal.Core`                          | The core layer. Exposes `ICryptocurrencyService`, which accepts query objects (`GetCurrentPriceQuery`, `GetTokenPriceQuery`, `GetHistoricalMarketDataQuery`, `GetCoinDataQuery`, `GetDeveloperDataQuery`), orchestrates calls to the CoinGecko client, and maps the raw API responses into presentation-friendly view models (`CurrentPriceView`, `TokenPriceView`, `HistoricalMarketDataView`, `CoinDataView`, `DeveloperDataView`) wrapped in `ServiceResult<T>` so upstream failures propagate with stable `ServiceErrorCode` values. |
 | `CryptoPal.ApiClient.CoinGecko`          | A focused, reusable client for the CoinGecko REST API. Wraps an `HttpClient` (configured via `IHttpClientFactory`), builds the request URLs, deserializes JSON responses, and translates failures into result objects. It is the only project that knows about CoinGecko's wire format and endpoints. |
 | `CryptoPal.Core.UnitTests`                | Unit tests for the core layer, exercising `CryptocurrencyService`'s orchestration, response-to-view mapping, validation, and failure handling with a mocked CoinGecko client. |
 | `CryptoPal.ApiClient.CoinGecko.UnitTests` | Unit tests for the CoinGecko client, verifying URL construction, JSON deserialization, and error handling against a fake `HttpMessageHandler`. |
 | `CryptoPal.ViewerApp.UnitTests`           | Unit tests for the console host, verifying command parsing, output formatting, usage messages, and exit codes against a mocked `ICryptocurrencyService`. |
-| `CryptoPal.ViewerApi.UnitTests`           | Unit tests for the REST endpoints, verifying route handlers delegate to `ICryptocurrencyService` and return the expected view models. |
+| `CryptoPal.ViewerApi.UnitTests`           | Unit tests for the REST endpoints, verifying route handlers delegate to `ICryptocurrencyService`, return successful view models, and map service failures to ProblemDetails status codes. |
 
 ### Dependencies
 

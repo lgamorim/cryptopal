@@ -5,6 +5,7 @@ namespace CryptoPal.ApiClient.CoinGecko.CoinMarketChart;
 public class CoinMarketChartResponse : IApiResponse
 {
     public bool HasRequestSucceeded { get; init; }
+    public int? HttpStatusCode { get; init; }
     public required MarketChart HistoricalMarketData { get; init; }
 
     public class MarketChart

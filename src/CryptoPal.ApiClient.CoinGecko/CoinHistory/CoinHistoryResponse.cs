@@ -5,6 +5,7 @@ namespace CryptoPal.ApiClient.CoinGecko.CoinHistory;
 public class CoinHistoryResponse : IApiResponse
 {
     public bool HasRequestSucceeded { get; init; }
+    public int? HttpStatusCode { get; init; }
     public required CoinHistoryDetail Coin { get; init; }
 
     public class CoinHistoryDetail

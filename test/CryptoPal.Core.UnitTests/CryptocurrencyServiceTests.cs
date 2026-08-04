@@ -46,16 +46,17 @@ public class CryptocurrencyServiceTests
             .Returns(simplePriceResponse);
 
         var cryptocurrencyService = new CryptocurrencyService(coinGeckoClient, NullLogger<CryptocurrencyService>.Instance);
-        var currentPriceView = await cryptocurrencyService.GetCurrentPriceAsync(getCurrentPriceQuery, TestContext.Current.CancellationToken);
+        var result = await cryptocurrencyService.GetCurrentPriceAsync(getCurrentPriceQuery, TestContext.Current.CancellationToken);
 
         Func<SimplePriceRequest, SimplePriceRequest, bool> isExpectedRequest = (request, expected) =>
             Equals(request.Coins, expected.Coins) && Equals(request.Currencies, expected.Currencies);
         await coinGeckoClient.Received(1).GetSimplePriceAsync(Arg.Is<SimplePriceRequest>(request => isExpectedRequest(request, simplePriceRequest)), Arg.Any<CancellationToken>());
 
-        currentPriceView.Should().NotBeNull();
-        currentPriceView.CoinPrices.Should().NotBeNull();
-        currentPriceView.CoinPrices.Count().Should().Be(3);
-        AssertCurrentPriceViewCoinPrices(currentPriceView.CoinPrices);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().NotBeNull();
+        result.Value!.CoinPrices.Should().NotBeNull();
+        result.Value.CoinPrices.Count().Should().Be(3);
+        AssertCurrentPriceViewCoinPrices(result.Value.CoinPrices);
 
         void AssertCurrentPriceViewCoinPrices(IEnumerable<CoinPrice> coinPrices)
         {
@@ -151,7 +152,7 @@ public class CryptocurrencyServiceTests
             .Returns(simpleTokenPriceResponse);
 
         var cryptocurrencyService = new CryptocurrencyService(coinGeckoClient, NullLogger<CryptocurrencyService>.Instance);
-        var tokenPriceView = await cryptocurrencyService.GetTokenPriceAsync(getTokenPriceQuery, TestContext.Current.CancellationToken);
+        var result = await cryptocurrencyService.GetTokenPriceAsync(getTokenPriceQuery, TestContext.Current.CancellationToken);
 
         Func<SimpleTokenPriceRequest, SimpleTokenPriceRequest, bool> isExpectedRequest = (request, expected) =>
             request.AssetPlatformId == expected.AssetPlatformId
@@ -159,10 +160,11 @@ public class CryptocurrencyServiceTests
             && Equals(request.Currencies, expected.Currencies);
         await coinGeckoClient.Received(1).GetSimpleTokenPriceAsync(Arg.Is<SimpleTokenPriceRequest>(request => isExpectedRequest(request, simpleTokenPriceRequest)), Arg.Any<CancellationToken>());
 
-        tokenPriceView.Should().NotBeNull();
-        tokenPriceView.ContractPrices.Should().NotBeNull();
-        tokenPriceView.ContractPrices.Count().Should().Be(2);
-        AssertTokenPriceViewContractPrices(tokenPriceView.ContractPrices);
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().NotBeNull();
+        result.Value!.ContractPrices.Should().NotBeNull();
+        result.Value.ContractPrices.Count().Should().Be(2);
+        AssertTokenPriceViewContractPrices(result.Value.ContractPrices);
 
         void AssertTokenPriceViewContractPrices(IEnumerable<ContractPrice> contractPrices)
         {
@@ -250,7 +252,7 @@ public class CryptocurrencyServiceTests
     }
 
     [Fact]
-    public async Task Should_GetTokenPriceReturnEmptyView_When_SimpleTokenPriceResponseIsUnsuccessful()
+    public async Task Should_GetTokenPriceReturnFailure_When_SimpleTokenPriceResponseIsUnsuccessful()
     {
         var getTokenPriceQuery = new GetTokenPriceQuery()
         {
@@ -269,10 +271,11 @@ public class CryptocurrencyServiceTests
             .Returns(simpleTokenPriceResponse);
 
         var cryptocurrencyService = new CryptocurrencyService(coinGeckoClient, NullLogger<CryptocurrencyService>.Instance);
-        var tokenPriceView = await cryptocurrencyService.GetTokenPriceAsync(getTokenPriceQuery, TestContext.Current.CancellationToken);
+        var result = await cryptocurrencyService.GetTokenPriceAsync(getTokenPriceQuery, TestContext.Current.CancellationToken);
 
-        tokenPriceView.Should().NotBeNull();
-        tokenPriceView.ContractPrices.Should().NotBeNull().And.BeEmpty();
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(ServiceErrorCode.UpstreamUnavailable);
+        result.ErrorMessage.Should().NotBeNullOrWhiteSpace();
     }
 
     [Fact]
@@ -306,13 +309,15 @@ public class CryptocurrencyServiceTests
             .Returns(coinMarketChartResponse);
 
         var cryptocurrencyService = new CryptocurrencyService(coinGeckoClient, NullLogger<CryptocurrencyService>.Instance);
-        var historicalMarketDataView = await cryptocurrencyService.GetHistoricalMarketDataAsync(getHistoricalMarketDataQuery, TestContext.Current.CancellationToken);
+        var result = await cryptocurrencyService.GetHistoricalMarketDataAsync(getHistoricalMarketDataQuery, TestContext.Current.CancellationToken);
 
         Func<CoinMarketChartRequest, CoinMarketChartRequest, bool> isExpectedRequest = (request, expected) =>
             request.Coin == expected.Coin && request.Currency == expected.Currency && request.Days == expected.Days;
         await coinGeckoClient.Received(1).GetCoinMarketChartAsync(Arg.Is<CoinMarketChartRequest>(request => isExpectedRequest(request, coinMarketChartRequest)), Arg.Any<CancellationToken>());
 
-        historicalMarketDataView.Should().NotBeNull();
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().NotBeNull();
+        var historicalMarketDataView = result.Value!;
         historicalMarketDataView.Coin.Should().Be(coinMarketChartRequest.Coin);
         historicalMarketDataView.Currency.Should().Be(coinMarketChartRequest.Currency);
         historicalMarketDataView.Prices.Should().NotBeNull().And.HaveCount(2);
@@ -374,7 +379,7 @@ public class CryptocurrencyServiceTests
     }
 
     [Fact]
-    public async Task Should_GetCurrentPriceReturnEmptyView_When_SimplePriceResponseIsUnsuccessful()
+    public async Task Should_GetCurrentPriceReturnFailure_When_SimplePriceResponseIsUnsuccessful()
     {
         var getCurrentPriceQuery = new GetCurrentPriceQuery()
         {
@@ -392,14 +397,43 @@ public class CryptocurrencyServiceTests
             .Returns(simplePriceResponse);
 
         var cryptocurrencyService = new CryptocurrencyService(coinGeckoClient, NullLogger<CryptocurrencyService>.Instance);
-        var currentPriceView = await cryptocurrencyService.GetCurrentPriceAsync(getCurrentPriceQuery, TestContext.Current.CancellationToken);
+        var result = await cryptocurrencyService.GetCurrentPriceAsync(getCurrentPriceQuery, TestContext.Current.CancellationToken);
 
-        currentPriceView.Should().NotBeNull();
-        currentPriceView.CoinPrices.Should().NotBeNull().And.BeEmpty();
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(ServiceErrorCode.UpstreamUnavailable);
+        result.ErrorMessage.Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Theory]
+    [InlineData(404, ServiceErrorCode.NotFound)]
+    [InlineData(429, ServiceErrorCode.RateLimited)]
+    public async Task Should_GetCurrentPriceReturnMappedFailure_When_UpstreamReturnsStatusCode(int statusCode, ServiceErrorCode expectedErrorCode)
+    {
+        var getCurrentPriceQuery = new GetCurrentPriceQuery()
+        {
+            Coins = new[] { "bitcoin" },
+            Currencies = new[] { "eur" }
+        };
+        var simplePriceResponse = new SimplePriceResponse()
+        {
+            HasRequestSucceeded = false,
+            HttpStatusCode = statusCode,
+            CryptocurrencyPrices = new Dictionary<string, IDictionary<string, decimal>>()
+        };
+
+        var coinGeckoClient = Substitute.For<ICoinGeckoClient>();
+        coinGeckoClient.GetSimplePriceAsync(Arg.Any<SimplePriceRequest>(), Arg.Any<CancellationToken>())
+            .Returns(simplePriceResponse);
+
+        var cryptocurrencyService = new CryptocurrencyService(coinGeckoClient, NullLogger<CryptocurrencyService>.Instance);
+        var result = await cryptocurrencyService.GetCurrentPriceAsync(getCurrentPriceQuery, TestContext.Current.CancellationToken);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(expectedErrorCode);
     }
 
     [Fact]
-    public async Task Should_GetHistoricalMarketDataReturnEmptyView_When_CoinMarketChartResponseIsUnsuccessful()
+    public async Task Should_GetHistoricalMarketDataReturnFailure_When_CoinMarketChartResponseIsUnsuccessful()
     {
         var getHistoricalMarketDataQuery = new GetHistoricalMarketDataQuery()
         {
@@ -423,18 +457,14 @@ public class CryptocurrencyServiceTests
             .Returns(coinMarketChartResponse);
 
         var cryptocurrencyService = new CryptocurrencyService(coinGeckoClient, NullLogger<CryptocurrencyService>.Instance);
-        var historicalMarketDataView = await cryptocurrencyService.GetHistoricalMarketDataAsync(getHistoricalMarketDataQuery, TestContext.Current.CancellationToken);
+        var result = await cryptocurrencyService.GetHistoricalMarketDataAsync(getHistoricalMarketDataQuery, TestContext.Current.CancellationToken);
 
-        historicalMarketDataView.Should().NotBeNull();
-        historicalMarketDataView.Coin.Should().Be(getHistoricalMarketDataQuery.Coin);
-        historicalMarketDataView.Currency.Should().Be(getHistoricalMarketDataQuery.Currency);
-        historicalMarketDataView.Prices.Should().NotBeNull().And.BeEmpty();
-        historicalMarketDataView.MarketCaps.Should().NotBeNull().And.BeEmpty();
-        historicalMarketDataView.TotalVolumes.Should().NotBeNull().And.BeEmpty();
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(ServiceErrorCode.UpstreamUnavailable);
     }
 
     [Fact]
-    public async Task Should_GetHistoricalMarketDataReturnEmptyView_When_ResponseTimestampIsOutOfRange()
+    public async Task Should_GetHistoricalMarketDataReturnMappingFailure_When_ResponseTimestampIsOutOfRange()
     {
         var getHistoricalMarketDataQuery = new GetHistoricalMarketDataQuery()
         {
@@ -458,12 +488,10 @@ public class CryptocurrencyServiceTests
             .Returns(coinMarketChartResponse);
 
         var cryptocurrencyService = new CryptocurrencyService(coinGeckoClient, NullLogger<CryptocurrencyService>.Instance);
-        var historicalMarketDataView = await cryptocurrencyService.GetHistoricalMarketDataAsync(getHistoricalMarketDataQuery, TestContext.Current.CancellationToken);
+        var result = await cryptocurrencyService.GetHistoricalMarketDataAsync(getHistoricalMarketDataQuery, TestContext.Current.CancellationToken);
 
-        historicalMarketDataView.Should().NotBeNull();
-        historicalMarketDataView.Prices.Should().NotBeNull().And.BeEmpty();
-        historicalMarketDataView.MarketCaps.Should().NotBeNull().And.BeEmpty();
-        historicalMarketDataView.TotalVolumes.Should().NotBeNull().And.BeEmpty();
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(ServiceErrorCode.ResponseMappingFailed);
     }
 
     [Fact]
@@ -498,11 +526,12 @@ public class CryptocurrencyServiceTests
             .Returns(coinDataResponse);
 
         var cryptocurrencyService = new CryptocurrencyService(coinGeckoClient, NullLogger<CryptocurrencyService>.Instance);
-        var coinDataView = await cryptocurrencyService.GetCoinDataAsync(getCoinDataQuery, TestContext.Current.CancellationToken);
+        var result = await cryptocurrencyService.GetCoinDataAsync(getCoinDataQuery, TestContext.Current.CancellationToken);
 
         await coinGeckoClient.Received(1).GetCoinDataAsync(Arg.Is<CoinDataRequest>(request => request.Coin == getCoinDataQuery.Coin), Arg.Any<CancellationToken>());
 
-        coinDataView.Should().NotBeNull();
+        result.IsSuccess.Should().BeTrue();
+        var coinDataView = result.Value!;
         coinDataView.Id.Should().Be("bitcoin");
         coinDataView.Symbol.Should().Be("btc");
         coinDataView.Name.Should().Be("Bitcoin");
@@ -546,7 +575,7 @@ public class CryptocurrencyServiceTests
     }
 
     [Fact]
-    public async Task Should_GetCoinDataReturnEmptyView_When_CoinDataResponseIsUnsuccessful()
+    public async Task Should_GetCoinDataReturnFailure_When_CoinDataResponseIsUnsuccessful()
     {
         var getCoinDataQuery = new GetCoinDataQuery()
         {
@@ -563,16 +592,10 @@ public class CryptocurrencyServiceTests
             .Returns(coinDataResponse);
 
         var cryptocurrencyService = new CryptocurrencyService(coinGeckoClient, NullLogger<CryptocurrencyService>.Instance);
-        var coinDataView = await cryptocurrencyService.GetCoinDataAsync(getCoinDataQuery, TestContext.Current.CancellationToken);
+        var result = await cryptocurrencyService.GetCoinDataAsync(getCoinDataQuery, TestContext.Current.CancellationToken);
 
-        coinDataView.Should().NotBeNull();
-        coinDataView.Id.Should().Be("bitcoin");
-        coinDataView.Symbol.Should().BeEmpty();
-        coinDataView.Name.Should().BeEmpty();
-        coinDataView.Description.Should().BeEmpty();
-        coinDataView.ImageUrl.Should().BeEmpty();
-        coinDataView.PriceChangePercentage24h.Should().Be(0);
-        coinDataView.MarketSnapshots.Should().NotBeNull().And.BeEmpty();
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(ServiceErrorCode.UpstreamUnavailable);
     }
 
     [Fact]
@@ -601,9 +624,10 @@ public class CryptocurrencyServiceTests
             .Returns(coinDataResponse);
 
         var cryptocurrencyService = new CryptocurrencyService(coinGeckoClient, NullLogger<CryptocurrencyService>.Instance);
-        var coinDataView = await cryptocurrencyService.GetCoinDataAsync(getCoinDataQuery, TestContext.Current.CancellationToken);
+        var result = await cryptocurrencyService.GetCoinDataAsync(getCoinDataQuery, TestContext.Current.CancellationToken);
 
-        coinDataView.Should().NotBeNull();
+        result.IsSuccess.Should().BeTrue();
+        var coinDataView = result.Value!;
         coinDataView.Id.Should().Be("bitcoin");
         coinDataView.Symbol.Should().Be("btc");
         coinDataView.Name.Should().Be("Bitcoin");
@@ -649,13 +673,14 @@ public class CryptocurrencyServiceTests
             .Returns(coinHistoryResponse);
 
         var cryptocurrencyService = new CryptocurrencyService(coinGeckoClient, NullLogger<CryptocurrencyService>.Instance);
-        var developerDataView = await cryptocurrencyService.GetDeveloperDataAsync(getDeveloperDataQuery, TestContext.Current.CancellationToken);
+        var result = await cryptocurrencyService.GetDeveloperDataAsync(getDeveloperDataQuery, TestContext.Current.CancellationToken);
 
         await coinGeckoClient.Received(1).GetCoinHistoryAsync(
             Arg.Is<CoinHistoryRequest>(request => request.Coin == getDeveloperDataQuery.Coin && request.Date == getDeveloperDataQuery.Date),
             Arg.Any<CancellationToken>());
 
-        developerDataView.Should().NotBeNull();
+        result.IsSuccess.Should().BeTrue();
+        var developerDataView = result.Value!;
         developerDataView.Id.Should().Be("bitcoin");
         developerDataView.Symbol.Should().Be("btc");
         developerDataView.Name.Should().Be("Bitcoin");
@@ -720,7 +745,7 @@ public class CryptocurrencyServiceTests
     }
 
     [Fact]
-    public async Task Should_GetDeveloperDataReturnEmptyView_When_DeveloperDataResponseIsUnsuccessful()
+    public async Task Should_GetDeveloperDataReturnFailure_When_DeveloperDataResponseIsUnsuccessful()
     {
         var getDeveloperDataQuery = new GetDeveloperDataQuery()
         {
@@ -738,22 +763,10 @@ public class CryptocurrencyServiceTests
             .Returns(coinHistoryResponse);
 
         var cryptocurrencyService = new CryptocurrencyService(coinGeckoClient, NullLogger<CryptocurrencyService>.Instance);
-        var developerDataView = await cryptocurrencyService.GetDeveloperDataAsync(getDeveloperDataQuery, TestContext.Current.CancellationToken);
+        var result = await cryptocurrencyService.GetDeveloperDataAsync(getDeveloperDataQuery, TestContext.Current.CancellationToken);
 
-        developerDataView.Should().NotBeNull();
-        developerDataView.Id.Should().Be("bitcoin");
-        developerDataView.Symbol.Should().BeEmpty();
-        developerDataView.Name.Should().BeEmpty();
-        developerDataView.Forks.Should().Be(0);
-        developerDataView.Stars.Should().Be(0);
-        developerDataView.Subscribers.Should().Be(0);
-        developerDataView.TotalIssues.Should().Be(0);
-        developerDataView.ClosedIssues.Should().Be(0);
-        developerDataView.PullRequestsMerged.Should().Be(0);
-        developerDataView.PullRequestContributors.Should().Be(0);
-        developerDataView.CodeAdditions.Should().Be(0);
-        developerDataView.CodeDeletions.Should().Be(0);
-        developerDataView.CommitCount4Weeks.Should().Be(0);
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(ServiceErrorCode.UpstreamUnavailable);
     }
 
     [Fact]
@@ -781,9 +794,10 @@ public class CryptocurrencyServiceTests
             .Returns(coinHistoryResponse);
 
         var cryptocurrencyService = new CryptocurrencyService(coinGeckoClient, NullLogger<CryptocurrencyService>.Instance);
-        var developerDataView = await cryptocurrencyService.GetDeveloperDataAsync(getDeveloperDataQuery, TestContext.Current.CancellationToken);
+        var result = await cryptocurrencyService.GetDeveloperDataAsync(getDeveloperDataQuery, TestContext.Current.CancellationToken);
 
-        developerDataView.Should().NotBeNull();
+        result.IsSuccess.Should().BeTrue();
+        var developerDataView = result.Value!;
         developerDataView.Id.Should().Be("bitcoin");
         developerDataView.Symbol.Should().Be("btc");
         developerDataView.Name.Should().Be("Bitcoin");
@@ -829,9 +843,10 @@ public class CryptocurrencyServiceTests
             .Returns(coinHistoryResponse);
 
         var cryptocurrencyService = new CryptocurrencyService(coinGeckoClient, NullLogger<CryptocurrencyService>.Instance);
-        var developerDataView = await cryptocurrencyService.GetDeveloperDataAsync(getDeveloperDataQuery, TestContext.Current.CancellationToken);
+        var result = await cryptocurrencyService.GetDeveloperDataAsync(getDeveloperDataQuery, TestContext.Current.CancellationToken);
 
-        developerDataView.Should().NotBeNull();
+        result.IsSuccess.Should().BeTrue();
+        var developerDataView = result.Value!;
         developerDataView.Forks.Should().Be(36262);
         developerDataView.CodeAdditions.Should().Be(0);
         developerDataView.CodeDeletions.Should().Be(0);

@@ -18,7 +18,7 @@ namespace CryptoPal.Core;
 public class CryptocurrencyService(ICoinGeckoClient coinGeckoClient, ILogger<CryptocurrencyService> logger) : ICryptocurrencyService
 {
     /// <inheritdoc />
-    public async Task<CurrentPriceView> GetCurrentPriceAsync(GetCurrentPriceQuery query, CancellationToken cancellationToken = default)
+    public async Task<ServiceResult<CurrentPriceView>> GetCurrentPriceAsync(GetCurrentPriceQuery query, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
         ArgumentNullException.ThrowIfNull(query.Coins);
@@ -30,25 +30,25 @@ public class CryptocurrencyService(ICoinGeckoClient coinGeckoClient, ILogger<Cry
             Currencies = query.Currencies
         };
 
-        IReadOnlyList<CoinPrice> coinPrices = Array.Empty<CoinPrice>();
         try
         {
             var simplePriceResponse = await coinGeckoClient.GetSimplePriceAsync(simplePriceRequest, cancellationToken);
-            if (simplePriceResponse.HasRequestSucceeded)
+            if (!simplePriceResponse.HasRequestSucceeded)
             {
-                coinPrices = MapToCoinPrices(simplePriceResponse.CryptocurrencyPrices);
+                return CreateUpstreamFailure<CurrentPriceView>(simplePriceResponse, "Failed to retrieve prices from CoinGecko.");
             }
+
+            var coinPrices = MapToCoinPrices(simplePriceResponse.CryptocurrencyPrices);
+            return ServiceResult<CurrentPriceView>.Success(new CurrentPriceView { CoinPrices = coinPrices });
         }
         catch (Exception exception) when (exception is IndexOutOfRangeException or ArgumentOutOfRangeException or InvalidCastException or OverflowException)
         {
-            logger.LogError(exception, "Failed to map current price response for coins {Coins}.", string.Join(',', query.Coins));
+            return CreateMappingFailure<CurrentPriceView>(exception, "Failed to map current price response for coins {Coins}.", string.Join(',', query.Coins));
         }
-
-        return new CurrentPriceView { CoinPrices = coinPrices };
     }
 
     /// <inheritdoc />
-    public async Task<TokenPriceView> GetTokenPriceAsync(GetTokenPriceQuery query, CancellationToken cancellationToken = default)
+    public async Task<ServiceResult<TokenPriceView>> GetTokenPriceAsync(GetTokenPriceQuery query, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
         ArgumentNullException.ThrowIfNull(query.AssetPlatformId);
@@ -62,25 +62,25 @@ public class CryptocurrencyService(ICoinGeckoClient coinGeckoClient, ILogger<Cry
             Currencies = query.Currencies
         };
 
-        IReadOnlyList<ContractPrice> contractPrices = Array.Empty<ContractPrice>();
         try
         {
             var simpleTokenPriceResponse = await coinGeckoClient.GetSimpleTokenPriceAsync(simpleTokenPriceRequest, cancellationToken);
-            if (simpleTokenPriceResponse.HasRequestSucceeded)
+            if (!simpleTokenPriceResponse.HasRequestSucceeded)
             {
-                contractPrices = MapToContractPrices(simpleTokenPriceResponse.TokenPrices);
+                return CreateUpstreamFailure<TokenPriceView>(simpleTokenPriceResponse, "Failed to retrieve token prices from CoinGecko.");
             }
+
+            var contractPrices = MapToContractPrices(simpleTokenPriceResponse.TokenPrices);
+            return ServiceResult<TokenPriceView>.Success(new TokenPriceView { ContractPrices = contractPrices });
         }
         catch (Exception exception) when (exception is IndexOutOfRangeException or ArgumentOutOfRangeException or InvalidCastException or OverflowException)
         {
-            logger.LogError(exception, "Failed to map token price response for contract addresses {ContractAddresses}.", string.Join(',', query.ContractAddresses));
+            return CreateMappingFailure<TokenPriceView>(exception, "Failed to map token price response for contract addresses {ContractAddresses}.", string.Join(',', query.ContractAddresses));
         }
-
-        return new TokenPriceView { ContractPrices = contractPrices };
     }
 
     /// <inheritdoc />
-    public async Task<HistoricalMarketDataView> GetHistoricalMarketDataAsync(GetHistoricalMarketDataQuery query, CancellationToken cancellationToken = default)
+    public async Task<ServiceResult<HistoricalMarketDataView>> GetHistoricalMarketDataAsync(GetHistoricalMarketDataQuery query, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
         ArgumentNullException.ThrowIfNull(query.Coin);
@@ -93,43 +93,38 @@ public class CryptocurrencyService(ICoinGeckoClient coinGeckoClient, ILogger<Cry
             Days = query.Days
         };
 
-        IList<DatedValue> prices = Array.Empty<DatedValue>();
-        IList<DatedValue> marketCaps = Array.Empty<DatedValue>();
-        IList<DatedValue> totalVolumes = Array.Empty<DatedValue>();
         try
         {
             var coinMarketChartResponse = await coinGeckoClient.GetCoinMarketChartAsync(coinMarketChartRequest, cancellationToken);
-            if (coinMarketChartResponse.HasRequestSucceeded)
+            if (!coinMarketChartResponse.HasRequestSucceeded)
             {
-                var historicalMarketData = coinMarketChartResponse.HistoricalMarketData;
-
-                // Map all series before assigning so a mid-mapping failure leaves the view empty rather than partial.
-                var mappedPrices = MapToDatedValues(historicalMarketData.Prices);
-                var mappedMarketCaps = MapToDatedValues(historicalMarketData.MarketCaps);
-                var mappedTotalVolumes = MapToDatedValues(historicalMarketData.TotalVolumes);
-
-                prices = mappedPrices;
-                marketCaps = mappedMarketCaps;
-                totalVolumes = mappedTotalVolumes;
+                return CreateUpstreamFailure<HistoricalMarketDataView>(coinMarketChartResponse, "Failed to retrieve historical market data from CoinGecko.");
             }
+
+            var historicalMarketData = coinMarketChartResponse.HistoricalMarketData;
+
+            // Map all series before assigning so a mid-mapping failure leaves the view empty rather than partial.
+            var mappedPrices = MapToDatedValues(historicalMarketData.Prices);
+            var mappedMarketCaps = MapToDatedValues(historicalMarketData.MarketCaps);
+            var mappedTotalVolumes = MapToDatedValues(historicalMarketData.TotalVolumes);
+
+            return ServiceResult<HistoricalMarketDataView>.Success(new HistoricalMarketDataView
+            {
+                Coin = query.Coin,
+                Currency = query.Currency,
+                Prices = mappedPrices,
+                MarketCaps = mappedMarketCaps,
+                TotalVolumes = mappedTotalVolumes
+            });
         }
         catch (Exception exception) when (exception is ArgumentOutOfRangeException)
         {
-            logger.LogError(exception, "Failed to map historical market data response for coin {Coin}.", query.Coin);
+            return CreateMappingFailure<HistoricalMarketDataView>(exception, "Failed to map historical market data response for coin {Coin}.", query.Coin);
         }
-
-        return new HistoricalMarketDataView
-        {
-            Coin = query.Coin,
-            Currency = query.Currency,
-            Prices = prices,
-            MarketCaps = marketCaps,
-            TotalVolumes = totalVolumes
-        };
     }
 
     /// <inheritdoc />
-    public async Task<CoinDataView> GetCoinDataAsync(GetCoinDataQuery query, CancellationToken cancellationToken = default)
+    public async Task<ServiceResult<CoinDataView>> GetCoinDataAsync(GetCoinDataQuery query, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
         ArgumentNullException.ThrowIfNull(query.Coin);
@@ -139,25 +134,25 @@ public class CryptocurrencyService(ICoinGeckoClient coinGeckoClient, ILogger<Cry
             Coin = query.Coin
         };
 
-        var coinDataView = CreateEmptyCoinDataView(query.Coin);
         try
         {
             var coinDataResponse = await coinGeckoClient.GetCoinDataAsync(coinDataRequest, cancellationToken);
-            if (coinDataResponse.HasRequestSucceeded)
+            if (!coinDataResponse.HasRequestSucceeded)
             {
-                coinDataView = MapToCoinDataView(query.Coin, coinDataResponse.Coin);
+                return CreateUpstreamFailure<CoinDataView>(coinDataResponse, "Failed to retrieve coin data from CoinGecko.");
             }
+
+            var coinDataView = MapToCoinDataView(query.Coin, coinDataResponse.Coin);
+            return ServiceResult<CoinDataView>.Success(coinDataView);
         }
         catch (Exception exception) when (exception is ArgumentOutOfRangeException or InvalidCastException or OverflowException)
         {
-            logger.LogError(exception, "Failed to map coin data response for coin {Coin}.", query.Coin);
+            return CreateMappingFailure<CoinDataView>(exception, "Failed to map coin data response for coin {Coin}.", query.Coin);
         }
-
-        return coinDataView;
     }
 
     /// <inheritdoc />
-    public async Task<DeveloperDataView> GetDeveloperDataAsync(GetDeveloperDataQuery query, CancellationToken cancellationToken = default)
+    public async Task<ServiceResult<DeveloperDataView>> GetDeveloperDataAsync(GetDeveloperDataQuery query, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(query);
         ArgumentNullException.ThrowIfNull(query.Coin);
@@ -169,22 +164,41 @@ public class CryptocurrencyService(ICoinGeckoClient coinGeckoClient, ILogger<Cry
             Date = query.Date
         };
 
-        var developerDataView = CreateEmptyDeveloperDataView(query.Coin);
         try
         {
             var coinHistoryResponse = await coinGeckoClient.GetCoinHistoryAsync(coinHistoryRequest, cancellationToken);
-            if (coinHistoryResponse.HasRequestSucceeded)
+            if (!coinHistoryResponse.HasRequestSucceeded)
             {
-                developerDataView = MapToDeveloperDataView(query.Coin, coinHistoryResponse.Coin);
+                return CreateUpstreamFailure<DeveloperDataView>(coinHistoryResponse, "Failed to retrieve developer data from CoinGecko.");
             }
+
+            var developerDataView = MapToDeveloperDataView(query.Coin, coinHistoryResponse.Coin);
+            return ServiceResult<DeveloperDataView>.Success(developerDataView);
         }
         catch (Exception exception) when (exception is ArgumentOutOfRangeException or InvalidCastException or OverflowException)
         {
-            logger.LogError(exception, "Failed to map developer data response for coin {Coin}.", query.Coin);
+            return CreateMappingFailure<DeveloperDataView>(exception, "Failed to map developer data response for coin {Coin}.", query.Coin);
         }
-
-        return developerDataView;
     }
+
+    private ServiceResult<T> CreateUpstreamFailure<T>(IApiResponse response, string errorMessage)
+    {
+        logger.LogWarning("CoinGecko request failed with status {StatusCode}.", response.HttpStatusCode);
+        return ServiceResult<T>.Failure(MapStatusCode(response.HttpStatusCode), errorMessage);
+    }
+
+    private ServiceResult<T> CreateMappingFailure<T>(Exception exception, string messageTemplate, params object?[] args)
+    {
+        logger.LogError(exception, messageTemplate, args);
+        return ServiceResult<T>.Failure(ServiceErrorCode.ResponseMappingFailed, "Failed to process the upstream response.");
+    }
+
+    private static ServiceErrorCode MapStatusCode(int? httpStatusCode) => httpStatusCode switch
+    {
+        404 => ServiceErrorCode.NotFound,
+        429 => ServiceErrorCode.RateLimited,
+        _ => ServiceErrorCode.UpstreamUnavailable
+    };
 
     private static IReadOnlyList<CoinPrice> MapToCoinPrices(IDictionary<string, IDictionary<string, decimal>> cryptoPrices)
     {
@@ -258,18 +272,6 @@ public class CryptocurrencyService(ICoinGeckoClient coinGeckoClient, ILogger<Cry
         return snapshots;
     }
 
-    private static CoinDataView CreateEmptyCoinDataView(string queryCoin) =>
-        new()
-        {
-            Id = queryCoin,
-            Symbol = string.Empty,
-            Name = string.Empty,
-            Description = string.Empty,
-            ImageUrl = string.Empty,
-            PriceChangePercentage24h = 0,
-            MarketSnapshots = Array.Empty<CoinMarketSnapshot>()
-        };
-
     private static DeveloperDataView MapToDeveloperDataView(string queryCoin, CoinHistoryResponse.CoinHistoryDetail coinHistory)
     {
         var developerData = coinHistory.DeveloperData;
@@ -292,22 +294,4 @@ public class CryptocurrencyService(ICoinGeckoClient coinGeckoClient, ILogger<Cry
             CommitCount4Weeks = developerData?.CommitCount4Weeks ?? 0
         };
     }
-
-    private static DeveloperDataView CreateEmptyDeveloperDataView(string queryCoin) =>
-        new()
-        {
-            Id = queryCoin,
-            Symbol = string.Empty,
-            Name = string.Empty,
-            Forks = 0,
-            Stars = 0,
-            Subscribers = 0,
-            TotalIssues = 0,
-            ClosedIssues = 0,
-            PullRequestsMerged = 0,
-            PullRequestContributors = 0,
-            CodeAdditions = 0,
-            CodeDeletions = 0,
-            CommitCount4Weeks = 0
-        };
 }
