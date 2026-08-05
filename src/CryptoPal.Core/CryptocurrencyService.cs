@@ -39,6 +39,14 @@ public class CryptocurrencyService(ICoinGeckoClient coinGeckoClient, ILogger<Cry
             }
 
             var coinPrices = MapToCoinPrices(simplePriceResponse.CryptocurrencyPrices);
+            var missingCoins = FindMissingIdentifiers(query.Coins, coinPrices.Select(price => price.Id));
+            if (missingCoins.Count > 0)
+            {
+                return ServiceResult<CurrentPriceView>.Failure(
+                    ServiceErrorCode.NotFound,
+                    $"One or more coins were not found: {string.Join(", ", missingCoins)}.");
+            }
+
             return ServiceResult<CurrentPriceView>.Success(new CurrentPriceView(coinPrices));
         }
         catch (Exception exception) when (exception is IndexOutOfRangeException or ArgumentOutOfRangeException or InvalidCastException or OverflowException)
@@ -71,6 +79,17 @@ public class CryptocurrencyService(ICoinGeckoClient coinGeckoClient, ILogger<Cry
             }
 
             var contractPrices = MapToContractPrices(simpleTokenPriceResponse.TokenPrices);
+            var missingContracts = FindMissingIdentifiers(
+                query.ContractAddresses,
+                contractPrices.Select(price => price.Address),
+                StringComparer.OrdinalIgnoreCase);
+            if (missingContracts.Count > 0)
+            {
+                return ServiceResult<TokenPriceView>.Failure(
+                    ServiceErrorCode.NotFound,
+                    $"One or more contract addresses were not found: {string.Join(", ", missingContracts)}.");
+            }
+
             return ServiceResult<TokenPriceView>.Success(new TokenPriceView(contractPrices));
         }
         catch (Exception exception) when (exception is IndexOutOfRangeException or ArgumentOutOfRangeException or InvalidCastException or OverflowException)
@@ -102,6 +121,12 @@ public class CryptocurrencyService(ICoinGeckoClient coinGeckoClient, ILogger<Cry
             }
 
             var historicalMarketData = coinMarketChartResponse.HistoricalMarketData;
+            if (IsEmptyHistoricalMarketData(historicalMarketData))
+            {
+                return ServiceResult<HistoricalMarketDataView>.Failure(
+                    ServiceErrorCode.NotFound,
+                    $"Historical market data was not found for coin '{query.Coin}'.");
+            }
 
             // Map all series before assigning so a mid-mapping failure leaves the view empty rather than partial.
             var mappedPrices = MapToDatedValues(historicalMarketData.Prices);
@@ -140,6 +165,13 @@ public class CryptocurrencyService(ICoinGeckoClient coinGeckoClient, ILogger<Cry
                 return CreateUpstreamFailure<CoinDataView>(coinDataResponse, "Failed to retrieve coin data from CoinGecko.");
             }
 
+            if (string.IsNullOrWhiteSpace(coinDataResponse.Coin.Id))
+            {
+                return ServiceResult<CoinDataView>.Failure(
+                    ServiceErrorCode.NotFound,
+                    $"Coin data was not found for coin '{query.Coin}'.");
+            }
+
             var coinDataView = MapToCoinDataView(query.Coin, coinDataResponse.Coin);
             return ServiceResult<CoinDataView>.Success(coinDataView);
         }
@@ -170,6 +202,13 @@ public class CryptocurrencyService(ICoinGeckoClient coinGeckoClient, ILogger<Cry
                 return CreateUpstreamFailure<DeveloperDataView>(coinHistoryResponse, "Failed to retrieve developer data from CoinGecko.");
             }
 
+            if (string.IsNullOrWhiteSpace(coinHistoryResponse.Coin.Id))
+            {
+                return ServiceResult<DeveloperDataView>.Failure(
+                    ServiceErrorCode.NotFound,
+                    $"Developer data was not found for coin '{query.Coin}'.");
+            }
+
             var developerDataView = MapToDeveloperDataView(query.Coin, coinHistoryResponse.Coin);
             return ServiceResult<DeveloperDataView>.Success(developerDataView);
         }
@@ -182,7 +221,10 @@ public class CryptocurrencyService(ICoinGeckoClient coinGeckoClient, ILogger<Cry
     private ServiceResult<T> CreateUpstreamFailure<T>(IApiResponse response, string errorMessage)
     {
         logger.LogWarning("CoinGecko request failed with status {StatusCode}.", response.HttpStatusCode);
-        return ServiceResult<T>.Failure(MapStatusCode(response.HttpStatusCode), errorMessage);
+        var errorCode = response.IsTimeout
+            ? ServiceErrorCode.RequestTimedOut
+            : MapStatusCode(response.HttpStatusCode);
+        return ServiceResult<T>.Failure(errorCode, errorMessage);
     }
 
     private ServiceResult<T> CreateMappingFailure<T>(Exception exception, string messageTemplate, params object?[] args)
@@ -197,6 +239,25 @@ public class CryptocurrencyService(ICoinGeckoClient coinGeckoClient, ILogger<Cry
         429 => ServiceErrorCode.RateLimited,
         _ => ServiceErrorCode.UpstreamUnavailable
     };
+
+    private static List<string> FindMissingIdentifiers(
+        IEnumerable<string> requested,
+        IEnumerable<string> returned,
+        StringComparer? comparer = null)
+    {
+        comparer ??= StringComparer.OrdinalIgnoreCase;
+        var returnedIds = returned.ToHashSet(comparer);
+        return requested
+            .Select(id => id.Trim())
+            .Where(id => !string.IsNullOrEmpty(id))
+            .Where(id => !returnedIds.Contains(id))
+            .ToList();
+    }
+
+    private static bool IsEmptyHistoricalMarketData(CoinMarketChartResponse.MarketChart marketChart) =>
+        marketChart.Prices.Count == 0
+        && marketChart.MarketCaps.Count == 0
+        && marketChart.TotalVolumes.Count == 0;
 
     private static IReadOnlyList<CoinPrice> MapToCoinPrices(IDictionary<string, IDictionary<string, decimal>> cryptoPrices)
     {

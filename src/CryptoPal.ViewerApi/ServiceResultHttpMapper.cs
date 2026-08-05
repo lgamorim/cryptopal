@@ -23,6 +23,7 @@ internal static class ServiceResultHttpMapper
         ServiceErrorCode.NotFound => StatusCodes.Status404NotFound,
         ServiceErrorCode.RateLimited => StatusCodes.Status429TooManyRequests,
         ServiceErrorCode.ResponseMappingFailed => StatusCodes.Status500InternalServerError,
+        ServiceErrorCode.RequestTimedOut => StatusCodes.Status504GatewayTimeout,
         _ => StatusCodes.Status502BadGateway
     };
 }

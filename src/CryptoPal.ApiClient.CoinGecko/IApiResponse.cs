@@ -10,4 +10,7 @@ public interface IApiResponse
 
     /// <summary>HTTP status code when the upstream request failed; otherwise <c>null</c>.</summary>
     int? HttpStatusCode { get; init; }
+
+    /// <summary>True when the request failed due to an HttpClient timeout.</summary>
+    bool IsTimeout { get; init; }
 }

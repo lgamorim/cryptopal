@@ -13,5 +13,8 @@ public enum ServiceErrorCode
     UpstreamUnavailable,
 
     /// <summary>The upstream response could not be mapped into a view model.</summary>
-    ResponseMappingFailed
+    ResponseMappingFailed,
+
+    /// <summary>The upstream request timed out.</summary>
+    RequestTimedOut
 }

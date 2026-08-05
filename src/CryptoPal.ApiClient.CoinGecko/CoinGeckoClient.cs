@@ -55,6 +55,7 @@ public class CoinGeckoClient(HttpClient httpClient, ILogger<CoinGeckoClient> log
             {
                 HasRequestSucceeded = false,
                 HttpStatusCode = GetHttpStatusCode(exception),
+                IsTimeout = IsRequestTimeout(exception, cancellationToken),
                 CryptocurrencyPrices = new Dictionary<string, IDictionary<string, decimal>>()
             };
         }
@@ -89,6 +90,7 @@ public class CoinGeckoClient(HttpClient httpClient, ILogger<CoinGeckoClient> log
             {
                 HasRequestSucceeded = false,
                 HttpStatusCode = GetHttpStatusCode(exception),
+                IsTimeout = IsRequestTimeout(exception, cancellationToken),
                 TokenPrices = new Dictionary<string, IDictionary<string, decimal>>()
             };
         }
@@ -119,6 +121,7 @@ public class CoinGeckoClient(HttpClient httpClient, ILogger<CoinGeckoClient> log
             {
                 HasRequestSucceeded = false,
                 HttpStatusCode = GetHttpStatusCode(exception),
+                IsTimeout = IsRequestTimeout(exception, cancellationToken),
                 HistoricalMarketData = CreateEmptyMarketChart()
             };
         }
@@ -148,6 +151,7 @@ public class CoinGeckoClient(HttpClient httpClient, ILogger<CoinGeckoClient> log
             {
                 HasRequestSucceeded = false,
                 HttpStatusCode = GetHttpStatusCode(exception),
+                IsTimeout = IsRequestTimeout(exception, cancellationToken),
                 Coin = new CoinDataResponse.CoinDetail()
             };
         }
@@ -178,6 +182,7 @@ public class CoinGeckoClient(HttpClient httpClient, ILogger<CoinGeckoClient> log
             {
                 HasRequestSucceeded = false,
                 HttpStatusCode = GetHttpStatusCode(exception),
+                IsTimeout = IsRequestTimeout(exception, cancellationToken),
                 Coin = new CoinHistoryResponse.CoinHistoryDetail()
             };
         }
@@ -190,6 +195,9 @@ public class CoinGeckoClient(HttpClient httpClient, ILogger<CoinGeckoClient> log
             MarketCaps = new List<MarketDataPoint>(),
             TotalVolumes = new List<MarketDataPoint>()
         };
+
+    private static bool IsRequestTimeout(Exception exception, CancellationToken cancellationToken) =>
+        exception is TaskCanceledException && !cancellationToken.IsCancellationRequested;
 
     private static bool ShouldHandleAsFailedRequest(Exception exception, CancellationToken cancellationToken) =>
         exception is HttpRequestException or JsonException

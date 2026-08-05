@@ -157,8 +157,10 @@ Coin and currency values are trimmed, and any empty entries are ignored. Invokin
 arguments, an unknown command, or the wrong number/type of arguments prints a usage message and exits
 with a non-zero status code.
 
-When CoinGecko is unavailable or returns an error, the command writes a message to stderr and exits with
-code `1` instead of printing empty output.
+When CoinGecko is unavailable or returns an error, the command writes `{ErrorCode}: {message}` to stderr
+and exits with code `1` instead of printing empty output. User-initiated cancellation (for example Ctrl+C)
+writes `Operation canceled.` to stderr and exits with code `130`. Requesting multiple coins or contract
+addresses fails when any requested identifier is missing from the upstream response.
 
 ## ViewerApi
 
@@ -182,10 +184,18 @@ instead of `200 OK` with empty data:
 |-----------|-------------|----------------------|
 | Resource not found upstream | `404` | `NotFound` |
 | CoinGecko rate limit | `429` | `RateLimited` |
+| Upstream request timed out | `504` | `RequestTimedOut` |
 | Other upstream/transport failure | `502` | `UpstreamUnavailable` |
 | Response could not be mapped | `500` | `ResponseMappingFailed` |
 
 The `detail` field contains a short human-readable message.
+
+Invalid JSON or malformed wire format from CoinGecko is classified as `UpstreamUnavailable` (`502`).
+Valid JSON that fails domain mapping (for example an out-of-range timestamp) is classified as
+`ResponseMappingFailed` (`500`). Client disconnect or cancellation does not produce ProblemDetails.
+
+Requesting multiple coins or contract addresses fails with `404 NotFound` when any requested
+identifier is missing from the upstream response.
 
 ## Projects
 

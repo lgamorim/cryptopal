@@ -6,6 +6,7 @@ public class CoinMarketChartResponse : IApiResponse
 {
     public bool HasRequestSucceeded { get; init; }
     public int? HttpStatusCode { get; init; }
+    public bool IsTimeout { get; init; }
     public required MarketChart HistoricalMarketData { get; init; }
 
     public class MarketChart

@@ -6,6 +6,7 @@ public class CoinHistoryResponse : IApiResponse
 {
     public bool HasRequestSucceeded { get; init; }
     public int? HttpStatusCode { get; init; }
+    public bool IsTimeout { get; init; }
     public required CoinHistoryDetail Coin { get; init; }
 
     public class CoinHistoryDetail

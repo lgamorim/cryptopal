@@ -397,6 +397,7 @@ public class CoinGeckoClientTests
         simplePriceResponse.Should().NotBeNull();
         simplePriceResponse.HasRequestSucceeded.Should().BeFalse();
         simplePriceResponse.HttpStatusCode.Should().Be((int)HttpStatusCode.InternalServerError);
+        simplePriceResponse.IsTimeout.Should().BeFalse();
         simplePriceResponse.CryptocurrencyPrices.Should().NotBeNull().And.BeEmpty();
     }
 
@@ -445,6 +446,7 @@ public class CoinGeckoClientTests
 
         simplePriceResponse.HasRequestSucceeded.Should().BeFalse();
         simplePriceResponse.HttpStatusCode.Should().BeNull();
+        simplePriceResponse.IsTimeout.Should().BeTrue();
         simplePriceResponse.CryptocurrencyPrices.Should().BeEmpty();
     }
 

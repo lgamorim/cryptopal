@@ -433,6 +433,90 @@ public class CryptocurrencyServiceTests
     }
 
     [Fact]
+    public async Task Should_GetCurrentPriceReturnRequestTimedOut_When_UpstreamTimesOut()
+    {
+        var getCurrentPriceQuery = new GetCurrentPriceQuery()
+        {
+            Coins = new[] { "bitcoin" },
+            Currencies = new[] { "eur" }
+        };
+        var simplePriceResponse = new SimplePriceResponse()
+        {
+            HasRequestSucceeded = false,
+            IsTimeout = true,
+            CryptocurrencyPrices = new Dictionary<string, IDictionary<string, decimal>>()
+        };
+
+        var coinGeckoClient = Substitute.For<ICoinGeckoClient>();
+        coinGeckoClient.GetSimplePriceAsync(Arg.Any<SimplePriceRequest>(), Arg.Any<CancellationToken>())
+            .Returns(simplePriceResponse);
+
+        var cryptocurrencyService = new CryptocurrencyService(coinGeckoClient, NullLogger<CryptocurrencyService>.Instance);
+        var result = await cryptocurrencyService.GetCurrentPriceAsync(getCurrentPriceQuery, TestContext.Current.CancellationToken);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(ServiceErrorCode.RequestTimedOut);
+    }
+
+    [Fact]
+    public async Task Should_GetCurrentPriceReturnNotFound_When_AnyCoinIsMissing()
+    {
+        var getCurrentPriceQuery = new GetCurrentPriceQuery()
+        {
+            Coins = new[] { "bitcoin", "not-a-coin" },
+            Currencies = new[] { "eur" }
+        };
+        var simplePriceResponse = new SimplePriceResponse()
+        {
+            HasRequestSucceeded = true,
+            CryptocurrencyPrices = new Dictionary<string, IDictionary<string, decimal>>
+            {
+                { "bitcoin", new Dictionary<string, decimal> { { "eur", 28135m } } }
+            }
+        };
+
+        var coinGeckoClient = Substitute.For<ICoinGeckoClient>();
+        coinGeckoClient.GetSimplePriceAsync(Arg.Any<SimplePriceRequest>(), Arg.Any<CancellationToken>())
+            .Returns(simplePriceResponse);
+
+        var cryptocurrencyService = new CryptocurrencyService(coinGeckoClient, NullLogger<CryptocurrencyService>.Instance);
+        var result = await cryptocurrencyService.GetCurrentPriceAsync(getCurrentPriceQuery, TestContext.Current.CancellationToken);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(ServiceErrorCode.NotFound);
+        result.ErrorMessage.Should().Contain("not-a-coin");
+    }
+
+    [Fact]
+    public async Task Should_GetCurrentPriceReturnSuccess_When_AllCoinsPresent()
+    {
+        var getCurrentPriceQuery = new GetCurrentPriceQuery()
+        {
+            Coins = new[] { "bitcoin", "ethereum" },
+            Currencies = new[] { "eur" }
+        };
+        var simplePriceResponse = new SimplePriceResponse()
+        {
+            HasRequestSucceeded = true,
+            CryptocurrencyPrices = new Dictionary<string, IDictionary<string, decimal>>
+            {
+                { "bitcoin", new Dictionary<string, decimal> { { "eur", 28135m } } },
+                { "ethereum", new Dictionary<string, decimal> { { "eur", 1799m } } }
+            }
+        };
+
+        var coinGeckoClient = Substitute.For<ICoinGeckoClient>();
+        coinGeckoClient.GetSimplePriceAsync(Arg.Any<SimplePriceRequest>(), Arg.Any<CancellationToken>())
+            .Returns(simplePriceResponse);
+
+        var cryptocurrencyService = new CryptocurrencyService(coinGeckoClient, NullLogger<CryptocurrencyService>.Instance);
+        var result = await cryptocurrencyService.GetCurrentPriceAsync(getCurrentPriceQuery, TestContext.Current.CancellationToken);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value!.CoinPrices.Should().HaveCount(2);
+    }
+
+    [Fact]
     public async Task Should_GetHistoricalMarketDataReturnFailure_When_CoinMarketChartResponseIsUnsuccessful()
     {
         var getHistoricalMarketDataQuery = new GetHistoricalMarketDataQuery()
@@ -596,6 +680,61 @@ public class CryptocurrencyServiceTests
 
         result.IsSuccess.Should().BeFalse();
         result.ErrorCode.Should().Be(ServiceErrorCode.UpstreamUnavailable);
+    }
+
+    [Fact]
+    public async Task Should_GetTokenPriceReturnNotFound_When_AnyContractIsMissing()
+    {
+        var getTokenPriceQuery = new GetTokenPriceQuery()
+        {
+            AssetPlatformId = "ethereum",
+            ContractAddresses = new[] { "0xdac17f958d2ee523a2206206994597c13d831ec7", "0xmissing" },
+            Currencies = new[] { "eur" }
+        };
+        var simpleTokenPriceResponse = new SimpleTokenPriceResponse()
+        {
+            HasRequestSucceeded = true,
+            TokenPrices = new Dictionary<string, IDictionary<string, decimal>>
+            {
+                { "0xdac17f958d2ee523a2206206994597c13d831ec7", new Dictionary<string, decimal> { { "eur", 0.92m } } }
+            }
+        };
+
+        var coinGeckoClient = Substitute.For<ICoinGeckoClient>();
+        coinGeckoClient.GetSimpleTokenPriceAsync(Arg.Any<SimpleTokenPriceRequest>(), Arg.Any<CancellationToken>())
+            .Returns(simpleTokenPriceResponse);
+
+        var cryptocurrencyService = new CryptocurrencyService(coinGeckoClient, NullLogger<CryptocurrencyService>.Instance);
+        var result = await cryptocurrencyService.GetTokenPriceAsync(getTokenPriceQuery, TestContext.Current.CancellationToken);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(ServiceErrorCode.NotFound);
+        result.ErrorMessage.Should().Contain("0xmissing");
+    }
+
+    [Fact]
+    public async Task Should_GetCoinDataReturnNotFound_When_CoinDetailIsEmpty()
+    {
+        var getCoinDataQuery = new GetCoinDataQuery()
+        {
+            Coin = "not-a-real-coin"
+        };
+        var coinDataResponse = new CoinDataResponse()
+        {
+            HasRequestSucceeded = true,
+            Coin = new CoinDataResponse.CoinDetail()
+        };
+
+        var coinGeckoClient = Substitute.For<ICoinGeckoClient>();
+        coinGeckoClient.GetCoinDataAsync(Arg.Any<CoinDataRequest>(), Arg.Any<CancellationToken>())
+            .Returns(coinDataResponse);
+
+        var cryptocurrencyService = new CryptocurrencyService(coinGeckoClient, NullLogger<CryptocurrencyService>.Instance);
+        var result = await cryptocurrencyService.GetCoinDataAsync(getCoinDataQuery, TestContext.Current.CancellationToken);
+
+        result.IsSuccess.Should().BeFalse();
+        result.ErrorCode.Should().Be(ServiceErrorCode.NotFound);
+        result.ErrorMessage.Should().Contain("not-a-real-coin");
     }
 
     [Fact]

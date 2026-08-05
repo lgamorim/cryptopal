@@ -23,6 +23,11 @@ public sealed class ViewerAppRunner(
         {
             return await RunCommandAsync(args, cancellationToken);
         }
+        catch (OperationCanceledException)
+        {
+            await error.WriteLineAsync("Operation canceled.");
+            return 130;
+        }
         catch (Exception exception)
         {
             await error.WriteLineAsync(exception.Message);
@@ -122,7 +127,7 @@ public sealed class ViewerAppRunner(
     {
         if (!result.IsSuccess)
         {
-            await error.WriteLineAsync(result.ErrorMessage);
+            await error.WriteLineAsync($"{result.ErrorCode}: {result.ErrorMessage}");
             return 1;
         }
 

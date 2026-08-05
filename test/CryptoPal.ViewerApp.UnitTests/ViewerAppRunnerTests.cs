@@ -290,7 +290,7 @@ public class ViewerAppRunnerTests
         var exitCode = await runner.RunAsync(["price", "bitcoin", "eur"], TestContext.Current.CancellationToken);
 
         exitCode.Should().Be(1);
-        error.ToString().Trim().Should().Be("Failed to retrieve prices from CoinGecko.");
+        error.ToString().Trim().Should().Be("UpstreamUnavailable: Failed to retrieve prices from CoinGecko.");
         output.ToString().Should().BeEmpty();
     }
 
@@ -308,7 +308,41 @@ public class ViewerAppRunnerTests
         var exitCode = await runner.RunAsync(["coin", "not-a-real-coin"], TestContext.Current.CancellationToken);
 
         exitCode.Should().Be(1);
-        error.ToString().Trim().Should().Be("Failed to retrieve coin data from CoinGecko.");
+        error.ToString().Trim().Should().Be("NotFound: Failed to retrieve coin data from CoinGecko.");
+        output.ToString().Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task Should_Return130_When_CancellationIsRequested()
+    {
+        var cryptocurrencyService = Substitute.For<ICryptocurrencyService>();
+        cryptocurrencyService.GetCurrentPriceAsync(Arg.Any<GetCurrentPriceQuery>(), Arg.Any<CancellationToken>())
+            .Returns<Task<ServiceResult<CurrentPriceView>>>(_ => throw new OperationCanceledException());
+
+        var error = new StringWriter();
+        var runner = new ViewerAppRunner(cryptocurrencyService, new StringWriter(), error);
+
+        var exitCode = await runner.RunAsync(["price", "bitcoin", "eur"], TestContext.Current.CancellationToken);
+
+        exitCode.Should().Be(130);
+        error.ToString().Trim().Should().Be("Operation canceled.");
+    }
+
+    [Fact]
+    public async Task Should_WriteErrorAndReturnOne_When_PriceServiceReturnsRequestTimedOut()
+    {
+        var cryptocurrencyService = Substitute.For<ICryptocurrencyService>();
+        cryptocurrencyService.GetCurrentPriceAsync(Arg.Any<GetCurrentPriceQuery>(), Arg.Any<CancellationToken>())
+            .Returns(ServiceResult<CurrentPriceView>.Failure(ServiceErrorCode.RequestTimedOut, "Failed to retrieve prices from CoinGecko."));
+
+        var output = new StringWriter();
+        var error = new StringWriter();
+        var runner = new ViewerAppRunner(cryptocurrencyService, output, error);
+
+        var exitCode = await runner.RunAsync(["price", "bitcoin", "eur"], TestContext.Current.CancellationToken);
+
+        exitCode.Should().Be(1);
+        error.ToString().Trim().Should().Be("RequestTimedOut: Failed to retrieve prices from CoinGecko.");
         output.ToString().Should().BeEmpty();
     }
 }
