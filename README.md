@@ -179,6 +179,7 @@ Routes mirror the console commands: `/prices`, `/token-prices`, `/historical-mar
 
 - OpenAPI document: `GET /openapi/v1.json`
 - Scalar UI (Development only): `/scalar`
+- Health check: `GET /health`
 
 ### Error responses
 

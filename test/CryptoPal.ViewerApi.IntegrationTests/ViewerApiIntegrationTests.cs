@@ -58,6 +58,16 @@ public class ViewerApiIntegrationTests : IClassFixture<ViewerApiFactory>
     }
 
     [Fact]
+    public async Task Should_Return200Healthy_When_HealthEndpointRequested()
+    {
+        var response = await _client.GetAsync("/health", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var healthResponse = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        healthResponse.Should().Be("Healthy");
+    }
+
+    [Fact]
     public async Task Should_ExposeOpenApiDocument_When_Requested()
     {
         var response = await _client.GetAsync("/openapi/v1.json", TestContext.Current.CancellationToken);

@@ -8,6 +8,7 @@ builder.Configuration.AddUserSecrets<Program>();
 
 builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();
+builder.Services.AddHealthChecks();
 builder.Services.AddCryptoPal(builder.Configuration, "src/CryptoPal.ViewerApi");
 
 var app = builder.Build();
@@ -21,6 +22,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.MapOpenApi();
+app.MapHealthChecks("/health");
 app.MapViewerApiEndpoints();
 
 app.Run();
