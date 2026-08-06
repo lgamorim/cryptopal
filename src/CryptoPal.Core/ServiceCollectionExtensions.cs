@@ -27,8 +27,8 @@ public static class ServiceCollectionExtensions
                 $"CoinGecko API key is not configured. Set it with: dotnet user-secrets set \"CoinGecko:ApiKey\" \"<your-key>\" --project {userSecretsProjectPath}");
 
         services.AddTransient<ICryptocurrencyService, CryptocurrencyService>();
-        services.AddHttpClient<ICoinGeckoClient, CoinGeckoClient>(client =>
-            CoinGeckoClient.ConfigureHttpClient(client, apiKey));
+        services.AddHttpClient<ICoinGeckoClient, CoinGeckoClient>()
+            .AddCoinGeckoHttpClient(apiKey);
 
         return services;
     }

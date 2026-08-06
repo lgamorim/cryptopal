@@ -33,9 +33,8 @@ public class CoinGeckoClient(HttpClient httpClient, ILogger<CoinGeckoClient> log
         ArgumentNullException.ThrowIfNull(request.Coins);
         ArgumentNullException.ThrowIfNull(request.Currencies);
 
-        const char separator = ',';
-        var apiArgIds = string.Join(separator, request.Coins);
-        var apiArgCurrencies = string.Join(separator, request.Currencies);
+        var apiArgIds = EncodeCommaSeparated(request.Coins);
+        var apiArgCurrencies = EncodeCommaSeparated(request.Currencies);
         var simplePriceApiUrl = $"simple/price?ids={apiArgIds}&vs_currencies={apiArgCurrencies}";
 
         try
@@ -68,10 +67,10 @@ public class CoinGeckoClient(HttpClient httpClient, ILogger<CoinGeckoClient> log
         ArgumentNullException.ThrowIfNull(request.ContractAddresses);
         ArgumentNullException.ThrowIfNull(request.Currencies);
 
-        const char separator = ',';
-        var apiArgContractAddresses = string.Join(separator, request.ContractAddresses);
-        var apiArgCurrencies = string.Join(separator, request.Currencies);
-        var simpleTokenPriceApiUrl = $"simple/token_price/{request.AssetPlatformId}?contract_addresses={apiArgContractAddresses}&vs_currencies={apiArgCurrencies}";
+        var apiArgContractAddresses = EncodeCommaSeparated(request.ContractAddresses);
+        var apiArgCurrencies = EncodeCommaSeparated(request.Currencies);
+        var simpleTokenPriceApiUrl =
+            $"simple/token_price/{EncodePathSegment(request.AssetPlatformId)}?contract_addresses={apiArgContractAddresses}&vs_currencies={apiArgCurrencies}";
 
         try
         {
@@ -102,7 +101,8 @@ public class CoinGeckoClient(HttpClient httpClient, ILogger<CoinGeckoClient> log
         ArgumentNullException.ThrowIfNull(request.Coin);
         ArgumentNullException.ThrowIfNull(request.Currency);
 
-        var coinMarketChartApiUrl = $"coins/{request.Coin}/market_chart?vs_currency={request.Currency}&days={request.Days}";
+        var coinMarketChartApiUrl =
+            $"coins/{EncodePathSegment(request.Coin)}/market_chart?vs_currency={EncodePathSegment(request.Currency)}&days={request.Days}";
 
         try
         {
@@ -132,7 +132,8 @@ public class CoinGeckoClient(HttpClient httpClient, ILogger<CoinGeckoClient> log
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(request.Coin);
 
-        var coinDataApiUrl = $"coins/{request.Coin}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false";
+        var coinDataApiUrl =
+            $"coins/{EncodePathSegment(request.Coin)}?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false&sparkline=false";
 
         try
         {
@@ -163,7 +164,8 @@ public class CoinGeckoClient(HttpClient httpClient, ILogger<CoinGeckoClient> log
         ArgumentNullException.ThrowIfNull(request.Coin);
         ArgumentNullException.ThrowIfNull(request.Date);
 
-        var coinHistoryApiUrl = $"coins/{request.Coin}/history?date={request.Date}&localization=false";
+        var coinHistoryApiUrl =
+            $"coins/{EncodePathSegment(request.Coin)}/history?date={EncodePathSegment(request.Date)}&localization=false";
 
         try
         {
@@ -187,6 +189,11 @@ public class CoinGeckoClient(HttpClient httpClient, ILogger<CoinGeckoClient> log
             };
         }
     }
+
+    private static string EncodePathSegment(string value) => Uri.EscapeDataString(value);
+
+    private static string EncodeCommaSeparated(IEnumerable<string> values) =>
+        string.Join(',', values.Select(EncodePathSegment));
 
     private static CoinMarketChartResponse.MarketChart CreateEmptyMarketChart() =>
         new()
