@@ -13,11 +13,21 @@ public static class ViewerApiEndpoints
     /// <summary>Maps cryptocurrency viewer routes on the application.</summary>
     public static IEndpointRouteBuilder MapViewerApiEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        endpoints.MapGet("/prices", GetCurrentPriceAsync);
-        endpoints.MapGet("/token-prices", GetTokenPriceAsync);
-        endpoints.MapGet("/historical-market-data", GetHistoricalMarketDataAsync);
-        endpoints.MapGet("/coins/{coin}", GetCoinDataAsync);
-        endpoints.MapGet("/coins/{coin}/developer-data", GetDeveloperDataAsync);
+        endpoints.MapGet("/prices", GetCurrentPriceAsync)
+            .WithName("GetCurrentPrice")
+            .WithSummary("Returns current prices for the requested coins and currencies.");
+        endpoints.MapGet("/token-prices", GetTokenPriceAsync)
+            .WithName("GetTokenPrice")
+            .WithSummary("Returns current prices for token contract addresses on a platform.");
+        endpoints.MapGet("/historical-market-data", GetHistoricalMarketDataAsync)
+            .WithName("GetHistoricalMarketData")
+            .WithSummary("Returns historical price, market cap, and volume series.");
+        endpoints.MapGet("/coins/{coin}", GetCoinDataAsync)
+            .WithName("GetCoinData")
+            .WithSummary("Returns detailed metadata and market snapshots for a coin.");
+        endpoints.MapGet("/coins/{coin}/developer-data", GetDeveloperDataAsync)
+            .WithName("GetDeveloperData")
+            .WithSummary("Returns developer repository activity for a coin on a historical date.");
 
         return endpoints;
     }

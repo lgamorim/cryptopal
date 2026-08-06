@@ -175,6 +175,11 @@ dotnet run --project src/CryptoPal.ViewerApi
 Routes mirror the console commands: `/prices`, `/token-prices`, `/historical-market-data`,
 `/coins/{coin}`, and `/coins/{coin}/developer-data`.
 
+### API documentation
+
+- OpenAPI document: `GET /openapi/v1.json`
+- Scalar UI (Development only): `/scalar`
+
 ### Error responses
 
 On upstream failure the API returns [RFC 7807 ProblemDetails](https://www.rfc-editor.org/rfc/rfc7807)

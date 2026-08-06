@@ -9,6 +9,7 @@
     <Project Path="test/CryptoPal.ApiClient.CoinGecko.UnitTests/CryptoPal.ApiClient.CoinGecko.UnitTests.csproj" />
     <Project Path="test/CryptoPal.Core.UnitTests/CryptoPal.Core.UnitTests.csproj" />
     <Project Path="test/CryptoPal.ViewerApp.UnitTests/CryptoPal.ViewerApp.UnitTests.csproj" />
+    <Project Path="test/CryptoPal.ViewerApi.IntegrationTests/CryptoPal.ViewerApi.IntegrationTests.csproj" />
     <Project Path="test/CryptoPal.ViewerApi.UnitTests/CryptoPal.ViewerApi.UnitTests.csproj" />
   </Folder>
 </Solution>
