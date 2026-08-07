@@ -209,6 +209,48 @@ public class ViewerAppRunnerTests
             Arg.Any<CancellationToken>());
     }
 
+    [Fact]
+    public async Task Should_WriteValidationErrorAndReturnOne_When_PriceCommandHasNoCoins()
+    {
+        var cryptocurrencyService = Substitute.For<ICryptocurrencyService>();
+        var error = new StringWriter();
+        var runner = new ViewerAppRunner(cryptocurrencyService, new StringWriter(), error);
+
+        var exitCode = await runner.RunAsync(["price", ",", "eur"], TestContext.Current.CancellationToken);
+
+        exitCode.Should().Be(1);
+        error.ToString().Trim().Should().Be("coins must contain at least one value.");
+        await cryptocurrencyService.DidNotReceive().GetCurrentPriceAsync(Arg.Any<GetCurrentPriceQuery>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Should_WriteValidationErrorAndReturnOne_When_HistoryDaysAreNotPositive()
+    {
+        var cryptocurrencyService = Substitute.For<ICryptocurrencyService>();
+        var error = new StringWriter();
+        var runner = new ViewerAppRunner(cryptocurrencyService, new StringWriter(), error);
+
+        var exitCode = await runner.RunAsync(["history", "bitcoin", "eur", "0"], TestContext.Current.CancellationToken);
+
+        exitCode.Should().Be(1);
+        error.ToString().Trim().Should().Be("days must be greater than zero.");
+        await cryptocurrencyService.DidNotReceive().GetHistoricalMarketDataAsync(Arg.Any<GetHistoricalMarketDataQuery>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Should_WriteValidationErrorAndReturnOne_When_DeveloperDateIsInvalid()
+    {
+        var cryptocurrencyService = Substitute.For<ICryptocurrencyService>();
+        var error = new StringWriter();
+        var runner = new ViewerAppRunner(cryptocurrencyService, new StringWriter(), error);
+
+        var exitCode = await runner.RunAsync(["developer", "bitcoin", "31-02-2025"], TestContext.Current.CancellationToken);
+
+        exitCode.Should().Be(1);
+        error.ToString().Trim().Should().Be("date must be a valid calendar date in dd-MM-yyyy format.");
+        await cryptocurrencyService.DidNotReceive().GetDeveloperDataAsync(Arg.Any<GetDeveloperDataQuery>(), Arg.Any<CancellationToken>());
+    }
+
     [Theory]
     [MemberData(nameof(InvalidArgs))]
     public async Task Should_PrintUsageAndReturnOne_When_ArgsAreInvalid(string[] args)

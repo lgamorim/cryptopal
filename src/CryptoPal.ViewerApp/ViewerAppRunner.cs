@@ -41,10 +41,19 @@ public sealed class ViewerAppRunner(
         {
             case ["price", var coinArg, var currencyArg]:
                 {
+                    var coins = Split(coinArg);
+                    var currencies = Split(currencyArg);
+                    if (await TryWriteValidationErrorAsync(
+                            ClientInputValidation.ValidateNonEmptyValues("coins", coins)
+                            ?? ClientInputValidation.ValidateNonEmptyValues("currencies", currencies)))
+                    {
+                        return 1;
+                    }
+
                     var query = new GetCurrentPriceQuery
                     {
-                        Coins = Split(coinArg),
-                        Currencies = Split(currencyArg)
+                        Coins = coins,
+                        Currencies = currencies
                     };
                     var result = await cryptocurrencyService.GetCurrentPriceAsync(query, cancellationToken);
                     return await HandleResult(result, async currentPrice =>
@@ -57,11 +66,21 @@ public sealed class ViewerAppRunner(
                 }
             case ["token", var assetPlatformArg, var addressArg, var currencyArg]:
                 {
+                    var contractAddresses = Split(addressArg);
+                    var currencies = Split(currencyArg);
+                    if (await TryWriteValidationErrorAsync(
+                            ClientInputValidation.ValidateNonEmpty("assetPlatformId", assetPlatformArg)
+                            ?? ClientInputValidation.ValidateNonEmptyValues("contractAddresses", contractAddresses)
+                            ?? ClientInputValidation.ValidateNonEmptyValues("currencies", currencies)))
+                    {
+                        return 1;
+                    }
+
                     var query = new GetTokenPriceQuery
                     {
                         AssetPlatformId = assetPlatformArg,
-                        ContractAddresses = Split(addressArg),
-                        Currencies = Split(currencyArg)
+                        ContractAddresses = contractAddresses,
+                        Currencies = currencies
                     };
                     var result = await cryptocurrencyService.GetTokenPriceAsync(query, cancellationToken);
                     return await HandleResult(result, async tokenPrice =>
@@ -74,6 +93,11 @@ public sealed class ViewerAppRunner(
                 }
             case ["history", var coin, var currency, var daysArg] when int.TryParse(daysArg, out var days):
                 {
+                    if (await TryWriteValidationErrorAsync(ClientInputValidation.ValidatePositiveDays(days)))
+                    {
+                        return 1;
+                    }
+
                     var query = new GetHistoricalMarketDataQuery { Coin = coin, Currency = currency, Days = days };
                     var result = await cryptocurrencyService.GetHistoricalMarketDataAsync(query, cancellationToken);
                     return await HandleResult(result, async historicalMarketData =>
@@ -101,6 +125,11 @@ public sealed class ViewerAppRunner(
                 }
             case ["developer", var coin, var date]:
                 {
+                    if (await TryWriteValidationErrorAsync(ClientInputValidation.ValidateDeveloperDate(date)))
+                    {
+                        return 1;
+                    }
+
                     var query = new GetDeveloperDataQuery { Coin = coin, Date = date };
                     var result = await cryptocurrencyService.GetDeveloperDataAsync(query, cancellationToken);
                     return await HandleResult(result, async developerData =>
@@ -121,6 +150,17 @@ public sealed class ViewerAppRunner(
                 PrintUsage();
                 return 1;
         }
+    }
+
+    private async Task<bool> TryWriteValidationErrorAsync(string? validationError)
+    {
+        if (validationError is null)
+        {
+            return false;
+        }
+
+        await error.WriteLineAsync(validationError);
+        return true;
     }
 
     private async Task<int> HandleResult<T>(ServiceResult<T> result, Func<T, Task> writeSuccess)

@@ -39,6 +39,13 @@ public static class ViewerApiEndpoints
         string[] currencies,
         CancellationToken cancellationToken)
     {
+        var validationError = ClientInputValidation.ValidateNonEmptyValues("coins", coins)
+            ?? ClientInputValidation.ValidateNonEmptyValues("currencies", currencies);
+        if (validationError is not null)
+        {
+            return ValidationProblemResults.BadRequest(validationError);
+        }
+
         var query = new GetCurrentPriceQuery { Coins = coins, Currencies = currencies };
         var result = await cryptocurrencyService.GetCurrentPriceAsync(query, cancellationToken);
 
@@ -53,6 +60,14 @@ public static class ViewerApiEndpoints
         string[] currencies,
         CancellationToken cancellationToken)
     {
+        var validationError = ClientInputValidation.ValidateNonEmpty("assetPlatformId", assetPlatformId)
+            ?? ClientInputValidation.ValidateNonEmptyValues("contractAddresses", contractAddresses)
+            ?? ClientInputValidation.ValidateNonEmptyValues("currencies", currencies);
+        if (validationError is not null)
+        {
+            return ValidationProblemResults.BadRequest(validationError);
+        }
+
         var query = new GetTokenPriceQuery
         {
             AssetPlatformId = assetPlatformId,
@@ -72,6 +87,12 @@ public static class ViewerApiEndpoints
         int days,
         CancellationToken cancellationToken)
     {
+        var validationError = ClientInputValidation.ValidatePositiveDays(days);
+        if (validationError is not null)
+        {
+            return ValidationProblemResults.BadRequest(validationError);
+        }
+
         var query = new GetHistoricalMarketDataQuery { Coin = coin, Currency = currency, Days = days };
         var result = await cryptocurrencyService.GetHistoricalMarketDataAsync(query, cancellationToken);
 
@@ -97,6 +118,12 @@ public static class ViewerApiEndpoints
         string date,
         CancellationToken cancellationToken)
     {
+        var validationError = ClientInputValidation.ValidateDeveloperDate(date);
+        if (validationError is not null)
+        {
+            return ValidationProblemResults.BadRequest(validationError);
+        }
+
         var query = new GetDeveloperDataQuery { Coin = coin, Date = date };
         var result = await cryptocurrencyService.GetDeveloperDataAsync(query, cancellationToken);
 

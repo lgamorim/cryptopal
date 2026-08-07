@@ -58,6 +58,42 @@ public class ViewerApiIntegrationTests : IClassFixture<ViewerApiFactory>
     }
 
     [Fact]
+    public async Task Should_Return400ProblemDetails_When_PricesRequestHasNoCoins()
+    {
+        var response = await _client.GetAsync("/prices?currencies=eur", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var problemDetails = await response.Content.ReadFromJsonAsync<ProblemDetailsResponse>(TestContext.Current.CancellationToken);
+        problemDetails.Should().NotBeNull();
+        problemDetails!.Title.Should().Be("BadRequest");
+        problemDetails.Detail.Should().Be("coins must contain at least one value.");
+    }
+
+    [Fact]
+    public async Task Should_Return400ProblemDetails_When_HistoricalMarketDataDaysAreNotPositive()
+    {
+        var response = await _client.GetAsync("/historical-market-data?coin=bitcoin&currency=eur&days=0", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var problemDetails = await response.Content.ReadFromJsonAsync<ProblemDetailsResponse>(TestContext.Current.CancellationToken);
+        problemDetails.Should().NotBeNull();
+        problemDetails!.Title.Should().Be("BadRequest");
+        problemDetails.Detail.Should().Be("days must be greater than zero.");
+    }
+
+    [Fact]
+    public async Task Should_Return400ProblemDetails_When_DeveloperDataDateIsInvalid()
+    {
+        var response = await _client.GetAsync("/coins/bitcoin/developer-data?date=31-02-2025", TestContext.Current.CancellationToken);
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var problemDetails = await response.Content.ReadFromJsonAsync<ProblemDetailsResponse>(TestContext.Current.CancellationToken);
+        problemDetails.Should().NotBeNull();
+        problemDetails!.Title.Should().Be("BadRequest");
+        problemDetails.Detail.Should().Be("date must be a valid calendar date in dd-MM-yyyy format.");
+    }
+
+    [Fact]
     public async Task Should_Return200Healthy_When_HealthEndpointRequested()
     {
         var response = await _client.GetAsync("/health", TestContext.Current.CancellationToken);

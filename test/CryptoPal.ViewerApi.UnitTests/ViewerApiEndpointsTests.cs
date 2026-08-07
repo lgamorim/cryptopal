@@ -41,6 +41,99 @@ public class ViewerApiEndpointsTests
     }
 
     [Fact]
+    public async Task Should_ReturnProblemDetailsWith400_When_GetCurrentPriceHasNoCoins()
+    {
+        var cryptocurrencyService = Substitute.For<ICryptocurrencyService>();
+
+        var result = await ViewerApiEndpoints.GetCurrentPriceAsync(
+            cryptocurrencyService,
+            [],
+            ["eur"],
+            TestContext.Current.CancellationToken);
+
+        var problemResult = result.Should().BeOfType<ProblemHttpResult>().Subject;
+        problemResult.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
+        problemResult.ProblemDetails.Title.Should().Be("BadRequest");
+        problemResult.ProblemDetails.Detail.Should().Be("coins must contain at least one value.");
+
+        await cryptocurrencyService.DidNotReceive().GetCurrentPriceAsync(Arg.Any<GetCurrentPriceQuery>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Should_ReturnProblemDetailsWith400_When_GetCurrentPriceHasNoCurrencies()
+    {
+        var cryptocurrencyService = Substitute.For<ICryptocurrencyService>();
+
+        var result = await ViewerApiEndpoints.GetCurrentPriceAsync(
+            cryptocurrencyService,
+            ["bitcoin"],
+            [],
+            TestContext.Current.CancellationToken);
+
+        var problemResult = result.Should().BeOfType<ProblemHttpResult>().Subject;
+        problemResult.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
+        problemResult.ProblemDetails.Detail.Should().Be("currencies must contain at least one value.");
+
+        await cryptocurrencyService.DidNotReceive().GetCurrentPriceAsync(Arg.Any<GetCurrentPriceQuery>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Should_ReturnProblemDetailsWith400_When_GetTokenPriceHasNoContractAddresses()
+    {
+        var cryptocurrencyService = Substitute.For<ICryptocurrencyService>();
+
+        var result = await ViewerApiEndpoints.GetTokenPriceAsync(
+            cryptocurrencyService,
+            "ethereum",
+            [],
+            ["eur"],
+            TestContext.Current.CancellationToken);
+
+        var problemResult = result.Should().BeOfType<ProblemHttpResult>().Subject;
+        problemResult.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
+        problemResult.ProblemDetails.Detail.Should().Be("contractAddresses must contain at least one value.");
+
+        await cryptocurrencyService.DidNotReceive().GetTokenPriceAsync(Arg.Any<GetTokenPriceQuery>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Should_ReturnProblemDetailsWith400_When_GetHistoricalMarketDataDaysAreNotPositive()
+    {
+        var cryptocurrencyService = Substitute.For<ICryptocurrencyService>();
+
+        var result = await ViewerApiEndpoints.GetHistoricalMarketDataAsync(
+            cryptocurrencyService,
+            "bitcoin",
+            "eur",
+            0,
+            TestContext.Current.CancellationToken);
+
+        var problemResult = result.Should().BeOfType<ProblemHttpResult>().Subject;
+        problemResult.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
+        problemResult.ProblemDetails.Detail.Should().Be("days must be greater than zero.");
+
+        await cryptocurrencyService.DidNotReceive().GetHistoricalMarketDataAsync(Arg.Any<GetHistoricalMarketDataQuery>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
+    public async Task Should_ReturnProblemDetailsWith400_When_GetDeveloperDataDateIsInvalid()
+    {
+        var cryptocurrencyService = Substitute.For<ICryptocurrencyService>();
+
+        var result = await ViewerApiEndpoints.GetDeveloperDataAsync(
+            cryptocurrencyService,
+            "bitcoin",
+            "31-02-2025",
+            TestContext.Current.CancellationToken);
+
+        var problemResult = result.Should().BeOfType<ProblemHttpResult>().Subject;
+        problemResult.StatusCode.Should().Be(StatusCodes.Status400BadRequest);
+        problemResult.ProblemDetails.Detail.Should().Be("date must be a valid calendar date in dd-MM-yyyy format.");
+
+        await cryptocurrencyService.DidNotReceive().GetDeveloperDataAsync(Arg.Any<GetDeveloperDataQuery>(), Arg.Any<CancellationToken>());
+    }
+
+    [Fact]
     public async Task Should_ReturnProblemDetailsWith502_When_GetCurrentPriceFailsUpstream()
     {
         var cryptocurrencyService = Substitute.For<ICryptocurrencyService>();
