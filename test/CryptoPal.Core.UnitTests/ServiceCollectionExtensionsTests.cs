@@ -1,5 +1,6 @@
 using CryptoPal.ApiClient.CoinGecko;
 using FluentAssertions;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -41,6 +42,18 @@ public class ServiceCollectionExtensionsTests
 
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*CoinGecko API key is not configured*src/CryptoPal.ViewerApp*");
+    }
+
+    [Fact]
+    public void Should_RegisterMemoryCache_When_AddCryptoPalCalled()
+    {
+        var services = new ServiceCollection();
+        var configuration = CreateConfiguration("test-api-key");
+
+        services.AddCryptoPal(configuration, "src/CryptoPal.ViewerApp");
+        using var provider = services.BuildServiceProvider();
+
+        provider.GetService<IMemoryCache>().Should().NotBeNull();
     }
 
     private static IConfiguration CreateConfiguration(string? apiKey)

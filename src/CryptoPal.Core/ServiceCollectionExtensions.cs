@@ -1,4 +1,5 @@
 using CryptoPal.ApiClient.CoinGecko;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -26,7 +27,15 @@ public static class ServiceCollectionExtensions
             ?? throw new InvalidOperationException(
                 $"CoinGecko API key is not configured. Set it with: dotnet user-secrets set \"CoinGecko:ApiKey\" \"<your-key>\" --project {userSecretsProjectPath}");
 
-        services.AddTransient<ICryptocurrencyService, CryptocurrencyService>();
+        var cacheSeconds = configuration.GetValue("CoinGecko:CacheSeconds", 60);
+
+        services.AddMemoryCache();
+        services.AddTransient<CryptocurrencyService>();
+        services.AddTransient<ICryptocurrencyService>(serviceProvider =>
+            new CachingCryptocurrencyService(
+                serviceProvider.GetRequiredService<CryptocurrencyService>(),
+                serviceProvider.GetRequiredService<IMemoryCache>(),
+                TimeSpan.FromSeconds(cacheSeconds)));
         services.AddHttpClient<ICoinGeckoClient, CoinGeckoClient>()
             .AddCoinGeckoHttpClient(apiKey);
 
