@@ -1,3 +1,4 @@
+using System.Text.Json;
 using CryptoPal.Core;
 using CryptoPal.Core.CoinData;
 using CryptoPal.Core.CurrentPrice;
@@ -13,6 +14,8 @@ public sealed class ViewerAppRunner(
     TextWriter output,
     TextWriter error)
 {
+    private static readonly JsonSerializerOptions JsonSerializerOptions = new(JsonSerializerDefaults.Web);
+
     /// <summary>Runs a single command from <paramref name="args"/> and returns the process exit code.</summary>
     /// <param name="args">Command-line arguments.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
@@ -37,6 +40,13 @@ public sealed class ViewerAppRunner(
 
     private async Task<int> RunCommandAsync(string[] args, CancellationToken cancellationToken)
     {
+        var jsonOutput = false;
+        if (args is ["--json", .. var remainingArgs])
+        {
+            jsonOutput = true;
+            args = remainingArgs;
+        }
+
         switch (args)
         {
             case ["price", var coinArg, var currencyArg]:
@@ -62,7 +72,7 @@ public sealed class ViewerAppRunner(
                         {
                             await output.WriteLineAsync(Format(coinPrice));
                         }
-                    });
+                    }, jsonOutput);
                 }
             case ["token", var assetPlatformArg, var addressArg, var currencyArg]:
                 {
@@ -89,7 +99,7 @@ public sealed class ViewerAppRunner(
                         {
                             await output.WriteLineAsync(Format(contractPrice));
                         }
-                    });
+                    }, jsonOutput);
                 }
             case ["history", var coin, var currency, var daysArg] when int.TryParse(daysArg, out var days):
                 {
@@ -107,7 +117,7 @@ public sealed class ViewerAppRunner(
                         {
                             await output.WriteLineAsync($"{date}={value}");
                         }
-                    });
+                    }, jsonOutput);
                 }
             case ["coin", var coin]:
                 {
@@ -121,7 +131,7 @@ public sealed class ViewerAppRunner(
                         {
                             await output.WriteLineAsync($"{snapshot.Currency}={snapshot.CurrentPrice}");
                         }
-                    });
+                    }, jsonOutput);
                 }
             case ["developer", var coin, var date]:
                 {
@@ -144,7 +154,7 @@ public sealed class ViewerAppRunner(
                         await output.WriteLineAsync($"Pull request contributors: {developerData.PullRequestContributors}");
                         await output.WriteLineAsync($"Code changes (4w): +{developerData.CodeAdditions}/{developerData.CodeDeletions}");
                         await output.WriteLineAsync($"Commits (4w): {developerData.CommitCount4Weeks}");
-                    });
+                    }, jsonOutput);
                 }
             default:
                 PrintUsage();
@@ -163,7 +173,7 @@ public sealed class ViewerAppRunner(
         return true;
     }
 
-    private async Task<int> HandleResult<T>(ServiceResult<T> result, Func<T, Task> writeSuccess)
+    private async Task<int> HandleResult<T>(ServiceResult<T> result, Func<T, Task> writeHumanReadable, bool jsonOutput)
     {
         if (!result.IsSuccess)
         {
@@ -171,7 +181,13 @@ public sealed class ViewerAppRunner(
             return 1;
         }
 
-        await writeSuccess(result.Value!);
+        if (jsonOutput)
+        {
+            await output.WriteLineAsync(JsonSerializer.Serialize(result.Value, JsonSerializerOptions));
+            return 0;
+        }
+
+        await writeHumanReadable(result.Value!);
         return 0;
     }
 
@@ -193,6 +209,7 @@ public sealed class ViewerAppRunner(
     private void PrintUsage()
     {
         output.WriteLine("Usage:");
+        output.WriteLine("  [--json] <command> <args...>");
         output.WriteLine("  price   <coins> <currencies>     e.g. price bitcoin,ethereum eur,usd");
         output.WriteLine("  token   <platform> <addresses> <currencies>  e.g. token ethereum 0xdac17f958d2ee523a2206206994597c13d831ec7 eur,usd");
         output.WriteLine("  history <coin> <currency> <days>  e.g. history bitcoin eur 7");

@@ -58,6 +58,13 @@ passing the arguments after `--`:
 dotnet run --project src/CryptoPal.ViewerApp -- <command> <args...>
 ```
 
+Pass `--json` as the first argument to write the command result as JSON on stdout instead of the
+human-readable format:
+
+```sh
+dotnet run --project src/CryptoPal.ViewerApp -- --json price bitcoin eur,usd
+```
+
 It supports five commands:
 
 ### `price` — current prices
